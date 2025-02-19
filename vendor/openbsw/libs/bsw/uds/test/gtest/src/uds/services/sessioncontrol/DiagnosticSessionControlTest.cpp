@@ -78,9 +78,9 @@ public:
 struct DiagnosticSessionControlTest : ::testing::Test
 {
     DiagnosticSessionControlTest()
-    : fDiagnosticSessionControl(fUdsLifecycleConnector, _asyncContext, fSessionPersistence)
-    , fUdsLifecycleConnector()
+    : fUdsLifecycleConnector()
     , fSessionPersistence()
+    , fDiagnosticSessionControl(fUdsLifecycleConnector, _asyncContext, fSessionPersistence)
     , fIncomingDiagConnection(::async::CONTEXT_INVALID)
     , fDiagSessionChangedListener()
     {
