@@ -36,7 +36,8 @@ private:
 class RunnableType
 {
 public:
-    virtual void execute() = 0;
+    virtual ~RunnableType() = default;
+    virtual void execute()  = 0;
 };
 
 struct TimeUnit
