@@ -153,7 +153,7 @@ public:
         // nothing to do, we don't expect responses
     }
 
-    virtual void requestSent(OutgoingDiagConnection& connection, RequestSendResult result) {}
+    void requestSent(OutgoingDiagConnection& connection, RequestSendResult result) override {}
 
 private:
     ::uds::ErrorCode sendEcuResetService(uint8_t subService, uint8_t targetId)
