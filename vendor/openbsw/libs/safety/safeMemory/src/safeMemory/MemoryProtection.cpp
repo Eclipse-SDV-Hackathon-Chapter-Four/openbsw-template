@@ -24,8 +24,8 @@ static const uint32_t regionLockedReadAccess = safety::mpuWord2<
     Mpu::nPI, Mpu::SM_UserMode, Mpu::UM_R>::word;
 
 #ifdef PLATFORM_SUPPORT_MPU
-static const uint32_t protectedRamStartAddrMinus1 = reinterpret_cast<const uint32_t>(__MPU_BSS_START) - 1U;
-static const uint32_t protectedRamEndAddr         = reinterpret_cast<const uint32_t>(__MPU_BSS_END) - 1U;
+static const uint32_t protectedRamStartAddrMinus1 = reinterpret_cast<uintptr_t>(__MPU_BSS_START) - 1U;
+static const uint32_t protectedRamEndAddr         = reinterpret_cast<uintptr_t>(__MPU_BSS_END) - 1U;
 
 static const Mpu::tDescriptor memoryProtectionConfigurationRam[] = {
     /*1*/ {0x0000000U,                       protectedRamStartAddrMinus1, {regionFullAccess},       {regionValid}},
