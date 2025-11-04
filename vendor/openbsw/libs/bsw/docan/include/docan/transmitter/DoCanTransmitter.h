@@ -783,7 +783,7 @@ void DoCanTransmitter<DataLinkLayer>::releaseRemoveLock(bool const remove)
                 messageTransmitter.getMessage(), processingResult);
         }
         ::interrupts::SuspendResumeAllInterruptsScopedLock const lock;
-        _messageTransmitterPool.release(reinterpret_cast<void const*>(&messageTransmitter));
+        _messageTransmitterPool.destroy(&messageTransmitter);
     }
     if (switchContext)
     {

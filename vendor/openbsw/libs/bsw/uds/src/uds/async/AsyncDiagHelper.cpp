@@ -44,7 +44,7 @@ void AsyncDiagHelper::processAndReleaseRequest(AbstractDiagJob& job, StoredReque
     IncomingDiagConnection& connection = request.getConnection();
     DiagReturnCode::Type const responseCode
         = job.process(connection, request.getRequest(), request.getRequestLength());
-    fStoredRequestPool.release(&request);
+    fStoredRequestPool.destroy(&request);
     if (responseCode != DiagReturnCode::OK)
     {
         (void)connection.sendNegativeResponse(static_cast<uint8_t>(responseCode), *this);

@@ -113,7 +113,7 @@ public:
      */
     void releaseIncomingDiagConnection(IncomingDiagConnection const& connection)
     {
-        IncomingDiagConnectionPool.release(&connection);
+        IncomingDiagConnectionPool.destroy(&connection);
     }
 
     template<class Pred>
@@ -136,7 +136,14 @@ public:
      * effects because some user code might still hold a reference to an elements which
      * gets destroyed when this function is called.
      */
-    void clearIncomingDiagConnections() { IncomingDiagConnectionPool.release_all(); }
+    void clearIncomingDiagConnections()
+    {
+        while (!IncomingDiagConnectionPool.empty())
+        {
+            IncomingDiagConnectionPool.destroy(
+                static_cast<IncomingDiagConnection*>(*IncomingDiagConnectionPool.begin()));
+        }
+    }
 };
 
 /**

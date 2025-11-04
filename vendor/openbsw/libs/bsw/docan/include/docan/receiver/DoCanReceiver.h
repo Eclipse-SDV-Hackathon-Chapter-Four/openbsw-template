@@ -783,7 +783,7 @@ void DoCanReceiver<DataLinkLayer>::releaseRemoveLock()
             {
                 MessageReceiverType& messageReceiver = *it;
                 it                                   = _messageReceivers.erase(it);
-                _messageReceiverPool.release(reinterpret_cast<void const*>(&messageReceiver));
+                _messageReceiverPool.destroy(&messageReceiver);
                 --_releasedReceiverCount;
             }
             else

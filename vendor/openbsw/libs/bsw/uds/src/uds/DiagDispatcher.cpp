@@ -393,7 +393,7 @@ void DiagDispatcher::checkConnectionShutdownProgress()
 
     ::etl::ipool const& incomingDiagConnections = fConfiguration.incomingDiagConnectionPool();
 
-    if (!incomingDiagConnections.full())
+    if (!incomingDiagConnections.empty())
     {
         Logger::error(
             UDS,
