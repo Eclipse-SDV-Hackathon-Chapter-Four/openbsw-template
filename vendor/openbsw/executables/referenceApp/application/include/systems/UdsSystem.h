@@ -64,13 +64,9 @@ public:
     ReadDataByIdentifier& getReadDataByIdentifier();
 
 private:
-    void do_init(bool const wakingUp);
-
     void addDiagJobs();
     void removeDiagJobs();
-    void shutdownTimeoutManager();
     void shutdownComplete(transport::AbstractTransportLayer&);
-    void processDiagCluster();
     void execute() override;
 
     UdsLifecycleConnector _udsLifecycleConnector;
