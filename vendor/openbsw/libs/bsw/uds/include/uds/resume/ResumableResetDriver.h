@@ -90,8 +90,6 @@ public:
 private:
     void execute() override;
 
-    void dispatchMessage();
-
     IUdsLifecycleConnector& fUdsLifecycleConnector;
     IDiagDispatcher* fDiagDispatcher;
     ::async::ContextType fContext;

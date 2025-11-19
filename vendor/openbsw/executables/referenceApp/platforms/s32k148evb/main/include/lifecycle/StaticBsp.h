@@ -81,7 +81,6 @@ public:
 
 private:
     void hwInit();
-    static void releasePins();
 
     class DummyEcuPowerStateController : public bios::IEcuPowerStateController
     {

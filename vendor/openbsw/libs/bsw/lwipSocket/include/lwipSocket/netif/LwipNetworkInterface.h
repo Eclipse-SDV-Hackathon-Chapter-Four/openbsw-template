@@ -42,8 +42,6 @@ bool initNetifIp4(
     ::ip::Ip4Config const& config,
     ::ip::NetworkInterfaceConfig const& netifConfig,
     void* state);
-bool onStatusChangedIp4(
-    ::lwipnetif::State state, netif& netif, ::ip::NetworkInterfaceConfig& config);
 #endif
 
 void start(netif& ni, ::ip::Ip4Config const& config);

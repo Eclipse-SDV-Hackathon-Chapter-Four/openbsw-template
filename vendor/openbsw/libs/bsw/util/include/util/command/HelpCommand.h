@@ -43,8 +43,6 @@ private:
 
     void help(CommandContext& context) const;
 
-    uint32_t getIdColumnWidth(ICommand const& command, int32_t depth = -1) const;
-
     ICommand& _command;
     uint32_t _idColumnWidth;
 };

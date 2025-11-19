@@ -37,7 +37,6 @@ public:
     static void init(uint8_t hwVariant = 0);
     static void shutdown();
 
-    static OutputPwm::tOutputPwmCfg* getConfiguration(uint8_t hwVariant);
     /**
      * */
     static bsp::BspReturnCode setDuty(uint16_t chan, uint16_t duty, bool immediateUpdate = false);

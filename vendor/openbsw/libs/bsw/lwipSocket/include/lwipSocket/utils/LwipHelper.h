@@ -38,8 +38,6 @@ inline ip_addr_t to_lwipIp(::ip::IPAddress const& ip)
     return lwipIp;
 }
 
-netif* filterETHFrames(pbuf* const pCompleteFrame, bool const enableVlanTagging);
-
 bool processPbufQueue(
     ::lwiputils::PbufQueue::Receiver receiver,
     ::etl::span<netif> lwnetifs,

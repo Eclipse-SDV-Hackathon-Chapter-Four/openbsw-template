@@ -35,23 +35,11 @@ class PrintfFormatScanner
 {
 public:
     /**
-     * Default constructor.
-     */
-    PrintfFormatScanner();
-
-    /**
      * Constructor to initialize the scanner with the format string.
      *
      * \param formatString C format string to scan
      */
     explicit PrintfFormatScanner(char const* formatString);
-
-    /**
-     * (Re)initialize the scanner with a format string.
-     *
-     * \param formatString C format string to scan
-     */
-    void init(char const* formatString);
 
     /**
      * Returns whether there are still tokens or not.

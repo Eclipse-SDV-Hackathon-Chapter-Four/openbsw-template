@@ -112,8 +112,6 @@ private:
         uint8_t blockSize,
         uint8_t encodedMinSeparationTime) override;
 
-    void shutdownDone();
-
     IDoCanPhysicalTransceiver<DataLinkLayerType>& _transceiver;
     DoCanReceiver<DataLinkLayerType> _receiver;
     DoCanTransmitter<DataLinkLayerType> _transmitter;

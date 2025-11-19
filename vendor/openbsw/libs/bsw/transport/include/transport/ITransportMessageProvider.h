@@ -18,9 +18,9 @@ class TransportMessage;
  */
 class ITransportMessageProvider
 {
-    ITransportMessageProvider& operator=(ITransportMessageProvider const&);
-
 public:
+    ITransportMessageProvider& operator=(ITransportMessageProvider const&) = delete;
+
     /**
      * Errorcodes used by ITransportMessageProvider
      */

@@ -25,12 +25,8 @@ public:
     void connectionClosed(ErrorCode status) override;
 
 private:
-    void sendByte(uint8_t byte);
-
     bool _locked;
     AbstractSocket& _socket;
-    uint32_t _acknowledged;
-    uint32_t _counter;
 };
 
 } // namespace tcp

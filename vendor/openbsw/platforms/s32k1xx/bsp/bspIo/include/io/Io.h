@@ -13,7 +13,7 @@ namespace bios
 class Io
 {
 public:
-    Io();
+    Io() = delete;
 
     enum Level
     {

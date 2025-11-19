@@ -144,11 +144,6 @@ public:
     void release();
 
     /**
-     * Send result of the transmission to the notification listener (if given).
-     */
-    void sendResult();
-
-    /**
      * Internal logic to check to see if the passed in current system microsecond value is
      * greater than the timer expiry time \param nowUs current system microsecond value \return
      * true if the current timer has expired

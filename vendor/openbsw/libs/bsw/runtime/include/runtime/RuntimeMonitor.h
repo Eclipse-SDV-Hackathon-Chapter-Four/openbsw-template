@@ -85,8 +85,6 @@ public:
         return lastRuntime;
     }
 
-    static void resetContextEntries(::etl::span<ContextEntryType> contextEntries);
-
     void enterTask(size_t const taskIdx)
     {
         ::async::LockType const lock;

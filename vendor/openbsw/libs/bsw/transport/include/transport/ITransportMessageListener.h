@@ -20,9 +20,9 @@ class ITransportMessageProcessedListener;
  */
 class ITransportMessageListener
 {
-    ITransportMessageListener& operator=(ITransportMessageListener const&);
-
 public:
+    ITransportMessageListener& operator=(ITransportMessageListener const&) = delete;
+
     /**
      * Status indicating the result of receiving a TransportMessage
      */

@@ -102,8 +102,6 @@ private:
 
     err_t checkResult(err_t error) const;
 
-    void notifyConnectionClosed(IDataListener::ErrorCode errorCode);
-
     // TCP stack callback functions
     static err_t tcpSentListener(void* arg, tcp_pcb* pcb, uint16_t len);
     static void tcpErrorListener(void* arg, err_t result);

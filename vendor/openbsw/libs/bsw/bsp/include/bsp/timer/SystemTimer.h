@@ -78,10 +78,6 @@ uint32_t getFastTicks(void);
 uint32_t getFastTicksPerSecond();
 
 void initSystemTimer();
-/*
- * Returns project dependent TickTime
- */
-uint32_t getSystemTime32BitUserTicks(void);
 
 #ifdef __cplusplus
 } /* extern "C" */

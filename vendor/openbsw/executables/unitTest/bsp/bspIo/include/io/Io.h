@@ -9,9 +9,9 @@ namespace bios
 {
 class Io
 {
-    Io();
-
 public:
+    Io() = delete;
+
     enum Level
     {
         LOW,

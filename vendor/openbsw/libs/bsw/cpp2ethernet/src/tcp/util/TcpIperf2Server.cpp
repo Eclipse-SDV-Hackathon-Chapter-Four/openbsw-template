@@ -10,9 +10,7 @@ namespace tcp
 using ::util::logger::Logger;
 using ::util::logger::TCP;
 
-TcpIperf2Server::TcpIperf2Server(AbstractSocket& socket)
-: _locked(false), _socket(socket), _acknowledged(0L), _counter(0L)
-{}
+TcpIperf2Server::TcpIperf2Server(AbstractSocket& socket) : _locked(false), _socket(socket) {}
 
 AbstractSocket* TcpIperf2Server::getSocket(ip::IPAddress const&, uint16_t)
 {

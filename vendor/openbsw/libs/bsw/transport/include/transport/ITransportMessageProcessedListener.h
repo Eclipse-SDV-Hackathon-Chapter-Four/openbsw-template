@@ -16,9 +16,10 @@ class TransportMessage;
  */
 class ITransportMessageProcessedListener
 {
-    ITransportMessageProcessedListener& operator=(ITransportMessageProcessedListener const&);
-
 public:
+    ITransportMessageProcessedListener& operator=(ITransportMessageProcessedListener const&)
+        = delete;
+
     /**
      * Status indicating the result of processing a TransportMessage
      */

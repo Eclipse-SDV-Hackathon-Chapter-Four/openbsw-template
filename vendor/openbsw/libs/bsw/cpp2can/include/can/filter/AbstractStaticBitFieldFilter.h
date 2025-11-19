@@ -90,13 +90,14 @@ public:
      */
     virtual uint8_t getMaskValue(uint16_t byteIndex) const = 0;
 
+    // no copies
+    AbstractStaticBitFieldFilter(AbstractStaticBitFieldFilter const&)            = delete;
+    AbstractStaticBitFieldFilter& operator=(AbstractStaticBitFieldFilter const&) = delete;
+
 private:
     // friends
     friend bool
     operator==(AbstractStaticBitFieldFilter const& x, AbstractStaticBitFieldFilter const& y);
-    // no copies
-    AbstractStaticBitFieldFilter(AbstractStaticBitFieldFilter const&);
-    AbstractStaticBitFieldFilter& operator=(AbstractStaticBitFieldFilter const&);
 };
 
 /**

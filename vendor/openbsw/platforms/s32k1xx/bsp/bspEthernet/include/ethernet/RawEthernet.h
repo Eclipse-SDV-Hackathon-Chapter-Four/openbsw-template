@@ -19,12 +19,4 @@ typedef ::etl::delegate<void(
 
 } // namespace ethernet
 
-extern "C"
-{
 #endif // #ifdef __cplusplus
-
-uint8_t ethernet_write(uint8_t data[], uint32_t length);
-
-#ifdef __cplusplus
-} // extern "C"
-#endif

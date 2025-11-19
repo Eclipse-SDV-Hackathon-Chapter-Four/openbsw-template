@@ -29,9 +29,9 @@ public:
     // Api for all DynamicClients
     class IDynamicOutputClient
     {
-        IDynamicOutputClient& operator=(IDynamicOutputClient const&);
-
     public:
+        IDynamicOutputClient& operator=(IDynamicOutputClient const&) = delete;
+
         virtual bsp::BspReturnCode set(uint16_t chan, uint8_t vol, bool latch) = 0;
         virtual bsp::BspReturnCode get(uint16_t chan, bool& result)            = 0;
     };
@@ -41,8 +41,6 @@ public:
     void init(uint8_t hw, bool doSetup = true);
 
     void shutdown();
-
-    void cyclic(void);
 
     /**
      * Interface output

@@ -130,10 +130,11 @@ public:
 
     uint8_t const* getRawBitField() const { return &_mask[0]; }
 
+    BitFieldFilter(BitFieldFilter const&)            = delete;
+    BitFieldFilter& operator=(BitFieldFilter const&) = delete;
+
 private:
     friend bool operator==(BitFieldFilter const& x, BitFieldFilter const& y);
-    BitFieldFilter(BitFieldFilter const&);
-    BitFieldFilter& operator=(BitFieldFilter const&);
     uint8_t _mask[MASK_SIZE]{};
 };
 
