@@ -55,7 +55,7 @@ Hardware Connection:
       * If an external power supply is required for the media converter, 12v is available from the
         S32K148 development board itself (J3-3 pin).
 
-      .. image:: tja1101.png
+      .. image:: tja1101.jpg
          :width: 40%
          :align: center
 

@@ -11,7 +11,7 @@ then you can test some of its hardware features and explore how they are accesse
 If you have been following the lessons and have successfully built and flashed an image on the S32K148 development board
 then you will find that if you turn the potentiometer on the board, then the board's RGB LED will change its brightness.
 
-.. image:: board_with_labels.png
+.. image:: board_with_labels.jpg
     :width: 80%
     :align: center
 

@@ -72,7 +72,7 @@ Jumper setup on the S32K148 board
 
 Before connecting power to the target board, check the jumpers on the target board are all in their default positions as shown below...
 
-   .. image:: nxp_board_top_jumpers.png
+   .. image:: nxp_board_top_jumpers.jpg
       :width: 80%
       :align: center
 
@@ -87,7 +87,7 @@ CAN connection on the S32K148 board
 
 If you are using a CAN adapter to communicate from your PC to the board, connect it to the **J11** on the board as shown below...
 
-   .. image:: nxp_board_can_plug.png
+   .. image:: nxp_board_can_plug.jpg
       :width: 80%
       :align: center
 
