@@ -8,7 +8,7 @@ commands = {
     "tests-posix-debug": BuildOpTpl(
         config_cmd="cmake --preset tests-posix-debug",
         build_cmd="cmake --build --preset tests-posix-debug",
-        test_cmd="ctest --preset tests-posix-debug",
+        test_cmd="ctest --preset tests-posix-debug --output-on-failure",
         configs=["Debug"],
         platforms=["linux"],
         build_dir="build/tests/posix/Debug",
@@ -16,7 +16,7 @@ commands = {
     "tests-posix-release": BuildOpTpl(
         config_cmd="cmake --preset tests-posix-release",
         build_cmd="cmake --build --preset tests-posix-release",
-        test_cmd="ctest --preset tests-posix-release",
+        test_cmd="ctest --preset tests-posix-release --output-on-failure",
         configs=["Release"],
         platforms=["linux"],
         build_dir="build/tests/posix/Release",
@@ -24,7 +24,7 @@ commands = {
     "tests-s32k1xx-debug": BuildOpTpl(
         config_cmd="cmake --preset tests-s32k1xx-debug",
         build_cmd="cmake --build --preset tests-s32k1xx-debug",
-        test_cmd="ctest --preset tests-s32k1xx-debug",
+        test_cmd="ctest --preset tests-s32k1xx-debug --output-on-failure",
         configs=["Debug"],
         platforms=["linux"],
         build_dir="build/tests/s32k1xx/Debug",
@@ -32,7 +32,7 @@ commands = {
     "tests-s32k1xx-release": BuildOpTpl(
         config_cmd="cmake --preset tests-s32k1xx-release",
         build_cmd="cmake --build --preset tests-s32k1xx-release",
-        test_cmd="ctest --preset tests-s32k1xx-release",
+        test_cmd="ctest --preset tests-s32k1xx-release --output-on-failure",
         configs=["Release"],
         platforms=["linux"],
         build_dir="build/tests/s32k1xx/Release",
