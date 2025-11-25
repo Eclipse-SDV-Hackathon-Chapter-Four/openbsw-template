@@ -248,6 +248,7 @@ void SocketCanTransceiver::guardedRun(int maxSentPerRun, int maxReceivedPerRun)
         ::std::memcpy(static_cast<void*>(&slot), canFrameSlice.data(), sizeof(slot));
         CANFrame& canFrame = slot.frame;
         can_frame socketCanFrame;
+        ::std::memset(&socketCanFrame, 0, sizeof(socketCanFrame));
         socketCanFrame.can_id  = canFrame.getId();
         int length             = canFrame.getPayloadLength();
         socketCanFrame.can_dlc = length;
