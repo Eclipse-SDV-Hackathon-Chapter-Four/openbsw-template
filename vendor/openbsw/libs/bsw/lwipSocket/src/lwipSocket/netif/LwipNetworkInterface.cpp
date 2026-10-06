@@ -1,0 +1,251 @@
+/********************************************************************************
+ * Copyright (c) 2025 Accenture
+ *
+ * This program and the accompanying materials are made available under the
+ * terms of the Apache License Version 2.0 which is available at
+ * https://www.apache.org/licenses/LICENSE-2.0
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ ********************************************************************************/
+
+#include "lwipSocket/netif/LwipNetworkInterface.h"
+
+#include "lwipSocket/utils/LwipHelper.h"
+
+#include <ethernet/EthernetLogger.h>
+#include <ip/IPAddress.h>
+#include <ip/NetworkInterfaceConfig.h>
+#include <tcp/TcpLogger.h>
+
+extern "C"
+{
+#include "lwip/autoip.h"
+#include "lwip/dhcp.h"
+#include "lwip/dhcp6.h"
+#include "lwip/ip_addr.h"
+#include "lwip/prot/autoip.h"
+#include "lwip/prot/dhcp.h"
+} // extern "C"
+
+#include <etl/error_handler.h>
+#include <etl/span.h>
+
+namespace lwipnetif
+{
+using ::util::logger::Logger;
+using ::util::logger::TCP;
+
+// LWIP needs this init callback otherwise it will assert
+static err_t initNetif(netif* const /* netif */) { return ERR_OK; }
+
+bool initNetifIp4(
+    netif& lwipNetif,
+    ::ip::Ip4Config const& config,
+    ::ip::NetworkInterfaceConfig const& networkInterfaceConfig,
+    void* state)
+{
+    ip4_addr ipAddress      = IPADDR4_INIT(IPADDR_ANY);
+    ip4_addr networkMask    = IPADDR4_INIT(IPADDR_ANY);
+    ip4_addr defaultGateway = IPADDR4_INIT(IPADDR_ANY);
+
+    if (!config.useDhcp)
+    {
+        ::etl::copy(
+            ip::packed(networkInterfaceConfig.ipAddress()),
+            ::etl::span<uint8_t>(
+                // NOLINTNEXTLINE(cppcoreguidelines-pro-type-reinterpret-cast): lwIP ip4_addr struct
+                reinterpret_cast<uint8_t*>(&ipAddress.addr),
+                sizeof(ipAddress.addr)));
+        ::etl::copy(
+            ip::packed(networkInterfaceConfig.networkMask()),
+            ::etl::span<uint8_t>(
+                // NOLINTNEXTLINE(cppcoreguidelines-pro-type-reinterpret-cast): lwIP ip4_addr struct
+                reinterpret_cast<uint8_t*>(&networkMask.addr),
+                sizeof(networkMask.addr)));
+        ::etl::copy(
+            ip::packed(networkInterfaceConfig.defaultGateway()),
+            ::etl::span<uint8_t>(
+                // NOLINTNEXTLINE(cppcoreguidelines-pro-type-reinterpret-cast): lwIP ip4_addr struct
+                reinterpret_cast<uint8_t*>(&defaultGateway.addr),
+                sizeof(defaultGateway.addr)));
+    }
+
+    auto const isInitialized
+        = netif_add(
+              &lwipNetif, &ipAddress, &networkMask, &defaultGateway, state, &initNetif, nullptr)
+          != nullptr;
+
+    lwipNetif.flags = 0U;
+    return isInitialized;
+}
+
+#if LWIP_IPV6
+bool initNetifWithStaticIp6Address(
+    netif& lwipNetif,
+    ::ip::NetworkInterfaceConfig const& netifConfig,
+    bool& hasStaticIp4Address,
+    void* state)
+{
+    bool isInitialized = false;
+    if (netifConfig.ipFamily() == ::ip::IPAddress::IPV6)
+    {
+        isInitialized = netif_add(&lwipNetif, nullptr, nullptr, nullptr, state, &initNetif, nullptr)
+                        != nullptr;
+
+        lwipNetif.flags = 0U;
+        if (!(isInitialized && (!_isStarted)))
+        {
+            // NOLINTNEXTLINE(cppcoreguidelines-pro-type-vararg): Logger API is variadic by design.
+            ::util::logger::Logger::error(
+                ::util::logger::TCP, "set static IP address called in wrong state");
+        }
+
+        ip_addr_t convertedAddress = lwiputils::to_lwipIp(ipAddress);
+        if (IP_IS_V4(&convertedAddress))
+        {
+#if LWIP_IPV4
+            netif_set_ipaddr(&_netif, ip_2_ip4(&convertedAddress));
+            _hasStaticIp4Address = true;
+#else
+            ETL_ASSERT_FAIL(ETL_ERROR_GENERIC("ipv4 not supported"));
+#endif
+        }
+        else
+        {
+#if LWIP_IPV4
+            // set type to V6 if the main address is 0
+            if (ip4_addr_isany(ip_2_ip4(&_netif.ip_addr)))
+            {
+                IP_SET_TYPE(&_netif.ip_addr, IPADDR_TYPE_V6);
+            }
+            setFlag(NETIF_FLAG_MLD6);
+            netif_ip6_addr_set(&_netif, 0, ip_2_ip6(&convertedAddress));
+            netif_ip6_addr_set_state(
+                &_netif,
+                0,
+                static_cast<uint8_t>(IP6_ADDR_PREFERRED) | static_cast<uint8_t>(IP6_ADDR_VALID));
+            _hasStaticIp6Address = true;
+#endif
+        }
+
+        return isInitialized;
+    }
+}
+#endif
+
+::shed::move_op startNetif(::ethernet::NetifState& state, netif& ni, ::ip::Ip4Config const& config)
+{
+    if (config.useDhcp)
+    {
+#if LWIP_DHCP == 1
+        // NOLINTNEXTLINE(cppcoreguidelines-pro-type-vararg): Logger API is variadic by design.
+        ::util::logger::Logger::info(::util::logger::TCP, "dhcp_start");
+        (void)dhcp_start(&ni
+
+                         //, &lwiputils::LwipDhcpVendorOptionProvider::dhcp4OptionsReceived
+        );
+#endif
+#if (LWIP_AUTOIP == 1) && (LWIP_DHCP_AUTOIP_COOP == 0)
+        // NOLINTNEXTLINE(cppcoreguidelines-pro-type-vararg): Logger API is variadic by design.
+        logger::Logger::info(logger::TCP, "autoip_start");
+        autoip_start(&_netif);
+#endif
+    }
+
+#if LWIP_IPV6_DHCP6 == 1
+    if (!_hasStaticIp6Address)
+    {
+        // NOLINTNEXTLINE(cppcoreguidelines-pro-type-vararg): Logger API is variadic by design.
+        logger::Logger::info(logger::TCP, "dhcp6_start");
+        dhcp6_start(&_netif, &lwiputils::LwipDhcpVendorOptionProvider::dhcp6OptionsReceived);
+    }
+#endif
+    state = ::ethernet::NetifState::Started;
+    return ::shed::move_op::MOVE;
+}
+
+::shed::move_op stopNetif(netif& ni, ::ethernet::NetifState& state, ::ip::Ip4Config& config)
+{
+    if (state != ::ethernet::NetifState::Started)
+    {
+        return ::shed::move_op::MOVE;
+    }
+
+#if LWIP_DHCP == 1
+    if (config.useDhcp)
+    {
+        dhcp_stop(&ni);
+#if LWIP_AUTOIP == 1
+        (void)autoip_stop(&ni);
+#endif
+    }
+#endif
+#if LWIP_IPV6_DHCP6 == 1
+    if (!hasStaticIp6Address)
+    {
+        dhcp6_stop(&_netif);
+    }
+#endif
+
+    netif_set_down(&ni);
+    state = ::ethernet::NetifState::Uninitialised;
+    return ::shed::move_op::MOVE;
+}
+
+::shed::move_op downNetif(netif& ni)
+{
+    onLinkStatusChanged(false, ni);
+    netif_set_down(&ni);
+    return ::shed::move_op::MOVE;
+}
+
+#if LWIP_IPV6
+void createIp6Address()
+{
+    setFlag(NETIF_FLAG_MLD6);
+#if LWIP_IPV6_AUTOCONFIG
+    _netif.ip6_autoconfig_enabled = 1;
+#endif
+#if LWIP_IPV6_SEND_ROUTER_SOLICIT
+    _netif.rs_count = LWIP_ND6_MAX_MULTICAST_SOLICIT;
+#endif
+    netif_create_ip6_linklocal_address(&_netif, 1);
+    _hasStaticIp6Address = false;
+}
+
+#endif
+
+bool onStatusChangedIp4(
+    ::ethernet::NetifState const state, netif& netif, ::ip::NetworkInterfaceConfig& config)
+{
+    ::ip::NetworkInterfaceConfig value;
+    if (state == ::ethernet::NetifState::Started)
+    {
+        bool const isLinkUp = (1U == netif_is_link_up(&netif));
+        if (isLinkUp && IP_IS_V4(&netif.ip_addr) && !ip4_addr_isany(ip_2_ip4(&netif.ip_addr)))
+        {
+            value = ::ip::NetworkInterfaceConfig(
+                PP_NTOHL(ip_2_ip4(&netif.ip_addr)->addr),
+                PP_NTOHL(ip_2_ip4(&netif.netmask)->addr),
+                PP_NTOHL(ip_2_ip4(&netif.gw)->addr));
+        }
+    }
+    return ::ip::updateConfig(config, value);
+}
+
+void onLinkStatusChanged(bool const isLinkUp, netif& ni)
+{
+    // NOLINTNEXTLINE(cppcoreguidelines-pro-type-vararg): Logger API is variadic by design.
+    ::util::logger::Logger::info(
+        ::util::logger::ETHERNET, "linkStatusChanged(%s)", (isLinkUp ? "UP" : "DOWN"));
+    if (isLinkUp)
+    {
+        netif_set_link_up(&ni);
+    }
+    else
+    {
+        netif_set_link_down(&ni);
+    }
+}
+
+} // namespace lwipnetif

@@ -1,0 +1,68 @@
+# *******************************************************************************
+# Copyright (c) 2026 Accenture
+#
+# This program and the accompanying materials are made available under the
+# terms of the Apache License Version 2.0 which is available at
+# https://www.apache.org/licenses/LICENSE-2.0
+#
+# SPDX-License-Identifier: Apache-2.0
+# *******************************************************************************
+
+load("@bazel_skylib//rules:common_settings.bzl", "bool_flag")
+load("@rules_cc//cc:cc_library.bzl", "cc_library")
+load("@rules_cc//cc:cc_test.bzl", "cc_test")
+load("//bazel/config/build_variant:compatibility.bzl", "unit_test_only")
+
+# Tracing toggle. --//libs/bsw/runtime:tracing=true to enable.
+bool_flag(
+    name = "tracing",
+    build_setting_default = False,
+    visibility = ["//visibility:public"],
+)
+
+config_setting(
+    name = "tracing_enabled",
+    flag_values = {":tracing": "true"},
+)
+
+config_setting(
+    name = "tracing_disabled",
+    flag_values = {":tracing": "false"},
+)
+
+cc_library(
+    name = "runtime",
+    srcs = ["src/runtime/StatisticsWriter.cpp"] + select({
+        ":tracing_enabled": ["src/runtime/Tracer.cpp"],
+        ":tracing_disabled": [],
+    }),
+    hdrs = glob(["include/runtime/*.h"]),
+    defines = select({
+        ":tracing_enabled": ["TRACING=1"],
+        ":tracing_disabled": [],
+    }),
+    strip_include_prefix = "include",
+    visibility = ["//visibility:public"],
+    deps = [
+        "//libs/3rdparty/etl",
+        "//libs/bsw/async:async_headers",
+        "//libs/bsw/asyncFreeRtos:freertos_configuration",
+        "//libs/bsw/bsp",
+        "//libs/bsw/util",
+    ],
+)
+
+cc_test(
+    name = "runtime_test",
+    srcs = glob(["test/src/**/*.cpp"]),
+    target_compatible_with = unit_test_only(),
+    visibility = ["//visibility:public"],
+    deps = [
+        ":runtime",
+        "//libs/3rdparty/googletest:gtest_main",
+        "//libs/bsw/async:async_mock",
+        "//libs/bsw/async:async_mock_impl",
+        "//libs/bsw/bsp:bsp_mock",
+        "//libs/bsw/util:util_mock",
+    ],
+)

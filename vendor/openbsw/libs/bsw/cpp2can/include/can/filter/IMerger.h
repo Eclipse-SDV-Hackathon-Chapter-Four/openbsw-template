@@ -1,0 +1,67 @@
+/********************************************************************************
+ * Copyright (c) 2024 Accenture
+ *
+ * This program and the accompanying materials are made available under the
+ * terms of the Apache License Version 2.0 which is available at
+ * https://www.apache.org/licenses/LICENSE-2.0
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ ********************************************************************************/
+
+/**
+ * Contains IMerger interface.
+ * \file IMerger.h
+ * \ingroup filter
+ */
+#pragma once
+
+namespace can
+{
+class BitFieldFilter;
+class AbstractStaticBitFieldFilter;
+class IntervalFilter;
+class MaskFilter;
+
+/**
+ * interface for class that are able to merge with other filter classes
+ * @class        IMerger
+ *
+ *
+ * \see BitFieldFilter
+ * \see AbstractStaticBitFieldFilter
+ * \see IntervalFilter
+ * \see MaskFilter
+ */
+class IMerger
+{
+public:
+    IMerger()                          = default;
+    IMerger(IMerger const&)            = delete;
+    IMerger& operator=(IMerger const&) = delete;
+
+    /**
+     * merges with a BitFieldFilter
+     * \param filter    BitFieldFilter to merge with
+     */
+    virtual void mergeWithBitField(BitFieldFilter const& filter) = 0;
+
+    /**
+     * merges with a AbstractStaticBitFieldFilter
+     * \param filter    AbstractStaticBitFieldFilter to merge with
+     */
+    virtual void mergeWithStaticBitField(AbstractStaticBitFieldFilter const& filter) = 0;
+
+    /**
+     * merges with a IntervalFilter
+     * \param filter    IntervalFilter to merge with
+     */
+    virtual void mergeWithInterval(IntervalFilter const& filter) = 0;
+
+    /**
+     * merges with a MaskFilter
+     * \param filter    MaskFilter to merge with
+     */
+    virtual void mergeWithMask(MaskFilter const& filter) = 0;
+};
+
+} // namespace can

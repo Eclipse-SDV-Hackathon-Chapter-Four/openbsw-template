@@ -1,0 +1,58 @@
+/********************************************************************************
+ * Copyright (c) 2025 Accenture
+ *
+ * This program and the accompanying materials are made available under the
+ * terms of the Apache License Version 2.0 which is available at
+ * https://www.apache.org/licenses/LICENSE-2.0
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ ********************************************************************************/
+
+#include "async/AsyncBinding.h"
+
+namespace async
+{
+using AdapterType = AsyncBindingType::AdapterType;
+
+void execute(ContextType const context, RunnableType& runnable)
+{
+    AdapterType::execute(context, runnable);
+}
+
+void schedule(
+    ContextType const context,
+    RunnableType& runnable,
+    TimeoutType& timeout,
+    uint32_t const delay,
+    TimeUnitType const unit)
+{
+    AdapterType::schedule(context, runnable, timeout, delay, unit);
+}
+
+void scheduleAtFixedRate(
+    ContextType const context,
+    RunnableType& runnable,
+    TimeoutType& timeout,
+    uint32_t const period,
+    TimeUnitType const unit)
+{
+    AdapterType::scheduleAtFixedRate(context, runnable, timeout, period, unit);
+}
+
+void suspend(ContextType context) { AdapterType::suspend(context); }
+
+void resume(ContextType context) { AdapterType::resume(context); }
+
+} // namespace async
+
+extern "C"
+{
+// This function will be called by Threadx::tx_kernel_enter()
+void tx_application_define(void* first_unused_memory)
+{
+    (void)first_unused_memory;
+
+    ::async::AdapterType::callInitFromThreadXKernel();
+}
+
+} // extern "C"

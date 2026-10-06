@@ -1,0 +1,68 @@
+/********************************************************************************
+ * Copyright (c) 2024 Accenture
+ *
+ * This program and the accompanying materials are made available under the
+ * terms of the Apache License Version 2.0 which is available at
+ * https://www.apache.org/licenses/LICENSE-2.0
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ ********************************************************************************/
+
+#include "async/FutureSupport.h"
+
+#include <async/AsyncBinding.h>
+
+#include <etl/error_handler.h>
+
+namespace async
+{
+static EventBits_t const FUTURE_SUPPORT_BITS_TO_WAIT = 0x01U;
+
+FutureSupport::FutureSupport(ContextType const context) : _context(context)
+{
+    _eventGroupHandle = xEventGroupCreateStatic(&_eventGroup);
+}
+
+void FutureSupport::wait()
+{
+    TickType_t const waitEventsTickCount = (AsyncBinding::AdapterType::getCurrentTaskContext()
+                                            == AsyncBinding::AdapterType::TASK_IDLE)
+                                               ? 0U
+                                               : AsyncBinding::WAIT_EVENTS_TICK_COUNT;
+    while (true)
+    {
+        if (xEventGroupWaitBits(
+                _eventGroupHandle, FUTURE_SUPPORT_BITS_TO_WAIT, pdTRUE, pdTRUE, waitEventsTickCount)
+            == FUTURE_SUPPORT_BITS_TO_WAIT)
+        {
+            return;
+        }
+    }
+}
+
+void FutureSupport::notify()
+{
+    BaseType_t* const higherPriorityTaskWoken
+        = AsyncBinding::AdapterType::getHigherPriorityTaskWoken();
+    if (higherPriorityTaskWoken == nullptr)
+    {
+        (void)xEventGroupSetBits(_eventGroupHandle, FUTURE_SUPPORT_BITS_TO_WAIT);
+    }
+    else
+    {
+        (void)xEventGroupSetBitsFromISR(
+            _eventGroupHandle, FUTURE_SUPPORT_BITS_TO_WAIT, higherPriorityTaskWoken);
+    }
+}
+
+void FutureSupport::assertTaskContext()
+{
+    ETL_ASSERT(verifyTaskContext(), ETL_ERROR_GENERIC("task context not verified"));
+}
+
+bool FutureSupport::verifyTaskContext()
+{
+    return _context == AsyncBinding::AdapterType::getCurrentTaskContext();
+}
+
+} // namespace async

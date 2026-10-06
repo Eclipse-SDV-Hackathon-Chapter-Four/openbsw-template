@@ -1,0 +1,40 @@
+# *******************************************************************************
+# Copyright (c) 2024 Accenture
+#
+# This program and the accompanying materials are made available under the
+# terms of the Apache License Version 2.0 which is available at
+# https://www.apache.org/licenses/LICENSE-2.0
+#
+# SPDX-License-Identifier: Apache-2.0
+# *******************************************************************************
+
+name: Publish Release
+
+on:
+  push:
+    tags:
+      - "v*.*"
+
+permissions:
+  contents: write
+
+jobs:
+  build-sphinx-docs:
+    uses: ./.github/workflows/sphinx-doc-build.yml
+
+  create-release:
+    runs-on: ubuntu-latest
+    needs: build-sphinx-docs
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Download build documentation
+        uses: actions/download-artifact@v4
+        with:
+          name: sphinx_docs
+
+      - name: Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: sphinx_docs.zip

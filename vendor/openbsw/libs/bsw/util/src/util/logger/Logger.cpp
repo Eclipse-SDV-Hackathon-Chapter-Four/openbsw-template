@@ -1,0 +1,75 @@
+/********************************************************************************
+ * Copyright (c) 2024 Accenture
+ *
+ * This program and the accompanying materials are made available under the
+ * terms of the Apache License Version 2.0 which is available at
+ * https://www.apache.org/licenses/LICENSE-2.0
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ ********************************************************************************/
+
+#include "util/logger/Logger.h"
+
+#ifndef LOGGER_NO_LEGACY_API
+
+#include "util/logger/ILoggerOutput.h"
+
+namespace util
+{
+namespace logger
+{
+IComponentMapping* Logger::_componentMapping;
+ILoggerOutput* Logger::_output;
+
+void Logger::init(IComponentMapping& componentMapping, ILoggerOutput& output)
+{
+    _componentMapping = &componentMapping;
+    _output           = &output;
+}
+
+void Logger::shutdown()
+{
+    if (_componentMapping != nullptr)
+    {
+        _componentMapping = nullptr;
+    }
+    _output = nullptr;
+}
+
+void Logger::doLog(
+    uint8_t const componentIndex, Level const level, char const* const str, va_list ap)
+{
+    ComponentInfo const componentInfo = _componentMapping->getComponentInfo(componentIndex);
+    LevelInfo const levelInfo         = _componentMapping->getLevelInfo(level);
+    _output->logOutput(componentInfo, levelInfo, str, ap);
+}
+
+Level Logger::getLevel(uint8_t const componentIndex)
+{
+    return (_componentMapping != nullptr) ? _componentMapping->getLevel(componentIndex)
+                                          : LEVEL_NONE;
+}
+
+extern "C" void
+bsw_cpp_logger_log(uint8_t const componentIndex, Level const level, char const* const str)
+{
+    // `str` is a message already formatted on the Rust side, not a printf format string.
+    // Route it through a literal "%s" so any '%' it contains is treated as data, not a
+    // conversion specifier (which would read from an empty va_list -> UB / crash).
+    // NOLINTBEGIN(cppcoreguidelines-pro-type-vararg): Logger API is variadic by design.
+    Logger::log(componentIndex, level, "%s", str);
+    // NOLINTEND(cppcoreguidelines-pro-type-vararg)
+}
+
+extern "C" bool bsw_cpp_logger_is_enabled(uint8_t const componentIndex, Level const level)
+{
+    // Mirrors the gate `Logger::log` applies internally. Exposed so the Rust bridge can
+    // skip formatting a message (and the cross-language call to log it) when the level is
+    // disabled, instead of formatting unconditionally and being dropped here.
+    return Logger::isEnabled(componentIndex, level);
+}
+
+} /* namespace logger */
+} /* namespace util */
+
+#endif /* LOGGER_NO_LEGACY_API */

@@ -1,0 +1,176 @@
+# *******************************************************************************
+# Copyright (c) 2026 Accenture
+#
+# This program and the accompanying materials are made available under the
+# terms of the Apache License Version 2.0 which is available at
+# https://www.apache.org/licenses/LICENSE-2.0
+#
+# SPDX-License-Identifier: Apache-2.0
+# *******************************************************************************
+
+load("@rules_cc//cc:cc_library.bzl", "cc_library")
+load("@rules_cc//cc:cc_test.bzl", "cc_test")
+load("//bazel/config/build_variant:compatibility.bzl", "unit_test_only")
+
+# FreeRTOS core configuration (FreeRtosPlatformConfig.h and platform wiring).
+# Every platform must declare this via its platform flags.
+#   Override: --//libs/bsw/asyncFreeRtos:freertos_core_configuration=//path/to:your_config
+label_flag(
+    name = "freertos_core_configuration",
+    build_setting_default = "//bazel/config:no_implementation",
+    visibility = ["//visibility:public"],
+)
+
+# Async core configuration (task counts, stack sizes, tick rate).
+#   Override: --//libs/bsw/asyncFreeRtos:async_core_configuration=//path/to:your_config
+label_flag(
+    name = "async_core_configuration",
+    build_setting_default = "//executables/referenceApp/asyncCoreConfiguration:async_core_configuration",
+    visibility = ["//visibility:public"],
+)
+
+cc_library(
+    name = "freertos_core_configuration_mock",
+    hdrs = ["test/mock/include/os/FreeRtosPlatformConfig.h"],
+    strip_include_prefix = "test/mock/include",
+    target_compatible_with = unit_test_only(),
+    visibility = ["//visibility:public"],
+)
+
+cc_library(
+    name = "async_core_configuration_mock",
+    hdrs = ["test/mock/include/async/Config.h"],
+    strip_include_prefix = "test/mock/include",
+    target_compatible_with = unit_test_only(),
+    visibility = ["//visibility:public"],
+)
+
+cc_library(
+    name = "async_binding_mock",
+    hdrs = [
+        "test/mock/include/async/AsyncBinding.h",
+        "test/mock/include/async/ContextHookMock.h",
+        "test/mock/include/async/TickHookMock.h",
+        "test/mock/include/async/TimeoutMock.h",
+    ],
+    strip_include_prefix = "test/mock/include",
+    target_compatible_with = unit_test_only(),
+    visibility = ["//visibility:public"],
+    deps = [
+        ":async_core_configuration_mock",
+        ":async_freertos",
+        "//libs/3rdparty/etl",
+        "//libs/3rdparty/googletest:gtest",
+        "//libs/bsw/async:async_headers",
+    ],
+)
+
+cc_library(
+    name = "async_freertos",
+    hdrs = [
+        "include/async/EventManager.h",
+        "include/async/FreeRtosAdapter.h",
+        "include/async/FutureSupport.h",
+        "include/async/Lock.h",
+        "include/async/ModifiableLock.h",
+        "include/async/StaticContextHook.h",
+        "include/async/StaticRunnable.h",
+        "include/async/TaskContext.h",
+        "include/async/TaskInitializer.h",
+        "include/async/Types.h",
+    ],
+    strip_include_prefix = "include",
+    visibility = ["//visibility:public"],
+    deps = [
+        "//libs/3rdparty/freeRtos:freertos_impl",
+        "//libs/bsp/bspInterrupts:bsp_interrupts",
+        "//libs/bsw/asyncImpl:async_impl",
+        "//libs/bsw/bsp",
+        "//libs/bsw/common",
+        "//libs/bsw/timer",
+    ],
+)
+
+cc_library(
+    name = "async_freertos_impl",
+    srcs = [
+        "src/async/Async.cpp",
+        "src/async/FutureSupport.cpp",
+        "src/async/Hook.cpp",
+        "src/async/Types.cpp",
+    ],
+    implementation_deps = [
+        ":async_core_configuration",
+        ":async_freertos",
+        "//libs/3rdparty/etl",
+        "//libs/bsw/async:async_binding",
+        "//libs/bsw/util",
+    ],
+    # Only compiles under FreeRTOS; mark incompatible elsewhere so wildcard builds skip it.
+    target_compatible_with = select({
+        "//bazel/config/rtos:support_freertos": [],
+        "//conditions:default": ["@platforms//:incompatible"],
+    }),
+    visibility = ["//visibility:public"],
+    # The RTOS archive calls these async hooks by name but is linked after this one.
+    # Force-link so single-pass linking keeps them.
+    alwayslink = True,
+)
+
+cc_library(
+    name = "freertos_configuration",
+    hdrs = [
+        "freeRtosConfiguration/FreeRTOSConfig.h",
+        "freeRtosConfiguration/async/Hook.h",
+        "freeRtosConfiguration/freertos_tasks_c_additions.h",
+    ],
+    strip_include_prefix = "freeRtosConfiguration",
+    visibility = ["//visibility:public"],
+    deps = [
+        ":async_core_configuration",
+        ":freertos_core_configuration",
+    ],
+)
+
+cc_test(
+    name = "async_freertos_minimum_stack_test",
+    srcs = ["test/src/async/TaskInitializerMinimumStackTest.cpp"],
+    target_compatible_with = unit_test_only(),
+    deps = [
+        ":async_freertos",
+        "//libs/3rdparty/googletest:gtest_main",
+        "//libs/bsw/util",
+        "//libs/bsw/util:util_mock",
+    ],
+)
+
+cc_test(
+    name = "async_freertos_test",
+    srcs = [
+        "test/mock/src/async/ContextHookMock.cpp",
+        "test/mock/src/async/TickHookMock.cpp",
+        "test/src/async/AsyncTest.cpp",
+        "test/src/async/FreeRtosAdapterTest.cpp",
+        "test/src/async/FutureSupportTest.cpp",
+        "test/src/async/LockTest.cpp",
+        "test/src/async/ModifiableLockTest.cpp",
+        "test/src/async/StaticRunnableTest.cpp",
+        "test/src/async/TaskContextTest.cpp",
+        "test/src/async/TaskInitializerTest.cpp",
+    ],
+    copts = ["-Wno-array-bounds"],
+    target_compatible_with = unit_test_only(),
+    deps = [
+        ":async_binding_mock",
+        ":async_freertos",
+        ":async_freertos_impl",
+        "//libs/3rdparty/freeRtos:freertos_mock",
+        "//libs/3rdparty/googletest:gtest_main",
+        "//libs/bsp/bspInterrupts:bsp_interrupts_mock",
+        "//libs/bsw/async",
+        "//libs/bsw/asyncImpl:async_impl_mock",
+        "//libs/bsw/bsp:bsp_mock",
+        "//libs/bsw/util",
+        "//libs/bsw/util:util_mock",
+    ],
+)

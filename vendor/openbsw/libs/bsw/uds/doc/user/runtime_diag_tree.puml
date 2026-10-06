@@ -1,0 +1,37 @@
+' *******************************************************************************
+' Copyright (c) 2024 Accenture
+'
+' This program and the accompanying materials are made available under the
+' terms of the Apache License Version 2.0 which is available at
+' https://www.apache.org/licenses/LICENSE-2.0
+'
+' SPDX-License-Identifier: Apache-2.0
+' *******************************************************************************
+
+@startwbs
+' Diagnostic Tree
+' Length: request_length so far
+' Prefix-length: bytes checked by ancestor nodes
+' cn: Node checks n-bytes
+' Prefix of child node == Request length of parent node (SID bytes match)
+* DiagJobRoot
+** ReadDataByIdentifier 0x22
+*** ReadIdentifierFromMemory 0x22
+' different obj instances = different DIDs are checked;
+*** ReadIdentifierFromNvStorage 0x22
+' ** WriteDataByIdentifier 0x2E
+' *** WriteIdentifierToMemory
+' *** WriteIdentifierToNvStorage
+' ** TesterPresent 0x3E
+** RoutineControl 0x31
+*** StartRoutine 0x31 0x01
+**** RoutineControlJob 0x31 0x01 xx xx
+
+*** StopRoutine 0x31 0x02
+**** RoutineControlJobNode 0x31 0x02 xx xx
+' Instance returned by RoutineControlJob::getStopRoutine();
+*** RequestRoutineResults 0x31 0x03
+**** RoutineControlJobNode 0x31 0x03 xx xx
+' Instance returned by RoutineControlJob::getRequestRoutineResults();
+
+@endwbs

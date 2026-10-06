@@ -1,0 +1,133 @@
+# *******************************************************************************
+# Copyright (c) 2024 Accenture
+#
+# This program and the accompanying materials are made available under the
+# terms of the Apache License Version 2.0 which is available at
+# https://www.apache.org/licenses/LICENSE-2.0
+#
+# SPDX-License-Identifier: Apache-2.0
+# *******************************************************************************
+
+name: Build S32k, STM32 and posix platform
+
+on: [workflow_call, push, pull_request]
+
+jobs:
+  run-command:
+    runs-on: ubuntu-latest
+    strategy:
+    #   max-parallel: 1
+      matrix:
+        preset: [ "tests-posix-debug", "tests-posix-release", "tests-s32k1xx-debug", "tests-s32k1xx-release", "tests-stm32-debug", "tests-stm32-release", "posix-freertos", "posix-threadx", "posix-freertos-with-tracing", "posix-freertos-canfd", "posix-rust", "s32k148-freertos", "s32k148-threadx", "s32k148-rust" ]
+        cxxid: ["gcc", "clang"]
+        cxxstd: [ 17, 20, 23 ]
+        # `platform` and `config` are fully determined by `preset`:
+        # - platform: s32k148-* -> arm, everything else -> linux
+        # - config: presets with "debug"/"release" in the name use that config;
+        #   the remaining presets (posix-*, s32k148-*) are multi-config and are
+        #   built as RelWithDebInfo here.
+        # Deriving both via `include` avoids a separate cross-product axis (and
+        # the excludes that would otherwise be needed for it).
+        include:
+          - preset: "tests-posix-debug"
+            platform: "linux"
+            config: "Debug"
+          - preset: "tests-posix-release"
+            platform: "linux"
+            config: "Release"
+          - preset: "tests-s32k1xx-debug"
+            platform: "linux"
+            config: "Debug"
+          - preset: "tests-s32k1xx-release"
+            platform: "linux"
+            config: "Release"
+          - preset: "tests-stm32-debug"
+            platform: "linux"
+            config: "Debug"
+          - preset: "tests-stm32-release"
+            platform: "linux"
+            config: "Release"
+          - preset: "posix-freertos"
+            platform: "linux"
+            config: "RelWithDebInfo"
+          - preset: "posix-threadx"
+            platform: "linux"
+            config: "RelWithDebInfo"
+          - preset: "posix-freertos-with-tracing"
+            platform: "linux"
+            config: "RelWithDebInfo"
+          - preset: "posix-freertos-canfd"
+            platform: "linux"
+            config: "RelWithDebInfo"
+          - preset: "posix-rust"
+            platform: "linux"
+            config: "RelWithDebInfo"
+          - preset: "s32k148-freertos"
+            platform: "arm"
+            config: "RelWithDebInfo"
+          - preset: "s32k148-threadx"
+            platform: "arm"
+            config: "RelWithDebInfo"
+          - preset: "s32k148-rust"
+            platform: "arm"
+            config: "RelWithDebInfo"
+        exclude:
+          # STM32 unit-test builds: minimal initial set (linux, gcc, C++17) -
+          # one Debug and one Release variant. Follow-up: extend to clang and
+          # C++20/23 to match the grid run by the posix and s32k1xx presets.
+          - preset: "tests-stm32-debug"
+            cxxid: "clang"
+          - preset: "tests-stm32-debug"
+            cxxstd: 20
+          - preset: "tests-stm32-debug"
+            cxxstd: 23
+          - preset: "tests-stm32-release"
+            cxxid: "clang"
+          - preset: "tests-stm32-release"
+            cxxstd: 20
+          - preset: "tests-stm32-release"
+            cxxstd: 23
+
+          - preset: "s32k148-rust"
+            cxxid: "clang"
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Docker Environment
+        uses: ./.github/actions/setup-docker-env
+
+      - name: Run the build.py inside the docker container
+        run: >-
+          DOCKER_UID=$(id -u) DOCKER_GID=$(id -g) DOCKER_HISTORY=/dev/null docker compose run --rm development
+          python3 .ci/build.py --preset ${{ matrix.preset }} --platform ${{ matrix.platform }} --cxxid ${{ matrix.cxxid }} --cxxstd ${{ matrix.cxxstd }} --config ${{ matrix.config }}
+
+      - name: Run custom CMake build for elf-analyzer
+        if: matrix.platform == 'arm' && matrix.cxxid == 'gcc' && matrix.cxxstd == '17' && matrix.config != ''
+        run: >-
+          DOCKER_UID=$(id -u) DOCKER_GID=$(id -g) DOCKER_HISTORY=/dev/null docker compose run --rm development
+          bash -c "
+          CC=/opt/arm-gnu-toolchain/bin/arm-none-eabi-gcc CXX=/opt/arm-gnu-toolchain/bin/arm-none-eabi-g++ cmake --preset ${{ matrix.preset }} -DCMAKE_CXX_FLAGS="-gdwarf-4" -DCMAKE_C_FLAGS="-gdwarf-4" -B elf-analyzer-artifacts/${{ matrix.preset }} &&
+          cmake --build elf-analyzer-artifacts/${{ matrix.preset }} -t app.referenceApp --config ${{ matrix.config }}
+          "
+
+      - name: Set commit hash and metadata
+        if: matrix.platform == 'arm' && matrix.cxxid == 'gcc' && matrix.cxxstd == '17' && matrix.config != ''
+        id: vars
+        run: |
+          echo "COMMIT_HASH=$(git rev-parse --short HEAD)" >> $GITHUB_ENV
+          echo "ARTIFACT_NAME=elf-${{ matrix.preset }}-${{ matrix.cxxstd }}-${{ matrix.config }}-gdwarf4-${GITHUB_SHA::7}" >> $GITHUB_ENV
+
+      - name: Find ELF files
+        if: matrix.platform == 'arm' && matrix.cxxid == 'gcc' && matrix.cxxstd == '17' && matrix.config != ''
+        run: |
+          mkdir -p elf-artifacts
+          cp elf-analyzer-artifacts/${{matrix.preset}}/executables/referenceApp/application/${{ matrix.config }}/app.referenceApp.elf elf-artifacts/
+
+      - name: Upload ELF as GitHub Artifact
+        if: matrix.platform == 'arm'  && matrix.cxxid == 'gcc' && matrix.cxxstd == '17' && matrix.config != ''
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ env.ARTIFACT_NAME }}
+          path: elf-artifacts/*.elf

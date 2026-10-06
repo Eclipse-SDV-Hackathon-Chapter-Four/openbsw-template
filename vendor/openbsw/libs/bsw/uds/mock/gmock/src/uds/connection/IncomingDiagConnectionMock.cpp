@@ -1,0 +1,114 @@
+/********************************************************************************
+ * Copyright (c) 2024 Accenture
+ *
+ * This program and the accompanying materials are made available under the
+ * terms of the Apache License Version 2.0 which is available at
+ * https://www.apache.org/licenses/LICENSE-2.0
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ ********************************************************************************/
+
+#include "uds/connection/IncomingDiagConnectionMock.h"
+
+#include "StubMock.h"
+
+namespace uds
+{
+
+void IncomingDiagConnection::addIdentifier()
+{
+    if (!IncomingDiagConnectionMockHelper::instance().isStub())
+    {
+        IncomingDiagConnectionMockHelper::instance().addIdentifier();
+    }
+}
+
+void IncomingDiagConnection::transportMessageProcessed(
+    transport::TransportMessage& transportMessage, ProcessingResult result)
+{
+    if (!IncomingDiagConnectionMockHelper::instance().isStub())
+    {
+        IncomingDiagConnectionMockHelper::instance().transportMessageProcessed(
+            transportMessage, result);
+    }
+}
+
+void IncomingDiagConnection::triggerNextNestedRequest()
+{
+    if (!IncomingDiagConnectionMockHelper::instance().isStub())
+    {
+        IncomingDiagConnectionMockHelper::instance().triggerNextNestedRequest();
+    }
+}
+
+void IncomingDiagConnection::asyncSendNegativeResponse(
+    uint8_t responseCode, AbstractDiagJob* pSender)
+{
+    if (!IncomingDiagConnectionMockHelper::instance().isStub())
+    {
+        IncomingDiagConnectionMockHelper::instance().asyncSendNegativeResponse(
+            responseCode, pSender);
+    }
+}
+
+void IncomingDiagConnection::asyncSendPositiveResponse(
+    uint16_t responseCode, AbstractDiagJob* pSender)
+{
+    if (!IncomingDiagConnectionMockHelper::instance().isStub())
+    {
+        IncomingDiagConnectionMockHelper::instance().asyncSendPositiveResponse(
+            responseCode, pSender);
+    }
+}
+
+void IncomingDiagConnection::asyncTransportMessageProcessed(
+    transport::TransportMessage* pTransportMessage, ProcessingResult status)
+{
+    if (!IncomingDiagConnectionMockHelper::instance().isStub())
+    {
+        IncomingDiagConnectionMockHelper::instance().asyncTransportMessageProcessed(
+            pTransportMessage, status);
+    }
+}
+
+void IncomingDiagConnection::expired(::async::RunnableType const& timeout)
+{
+    if (!IncomingDiagConnectionMockHelper::instance().isStub())
+    {
+        IncomingDiagConnectionMockHelper::instance().expired(timeout, actions);
+    }
+}
+
+PositiveResponse& IncomingDiagConnection::releaseRequestGetResponse()
+{
+    if (IncomingDiagConnectionMockHelper::instance().isStub())
+    {
+        return _positiveResponse;
+    }
+    return IncomingDiagConnectionMockHelper::instance().releaseRequestGetResponse();
+}
+
+::uds::ErrorCode
+IncomingDiagConnection::sendNegativeResponse(uint8_t responseCode, AbstractDiagJob& sender)
+{
+    if (IncomingDiagConnectionMockHelper::instance().isStub())
+    {
+        return OK;
+    }
+    return IncomingDiagConnectionMockHelper::instance().sendNegativeResponse(responseCode, sender);
+}
+
+uint8_t IncomingDiagConnection::getIdentifier(uint16_t idx) const
+{
+    if (IncomingDiagConnectionMockHelper::instance().isStub())
+    {
+        if (idx >= _identifiers.size())
+        {
+            return 0U;
+        }
+        return _identifiers[idx];
+    }
+    return IncomingDiagConnectionMockHelper::instance().getIdentifier(idx);
+}
+
+} // namespace uds

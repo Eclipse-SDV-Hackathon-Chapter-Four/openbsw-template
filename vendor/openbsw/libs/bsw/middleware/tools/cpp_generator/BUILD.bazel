@@ -1,0 +1,37 @@
+# *******************************************************************************
+# Copyright (c) 2026 Accenture
+#
+# This program and the accompanying materials are made available under the
+# terms of the Apache License Version 2.0 which is available at
+# https://www.apache.org/licenses/LICENSE-2.0
+#
+# SPDX-License-Identifier: Apache-2.0
+# *******************************************************************************
+
+load("@middleware_pip//:requirements.bzl", "requirement")
+load("@rules_python//python:py_binary.bzl", "py_binary")
+
+# Staged as genrule srcs so jinja2cpp.py can resolve --input via
+# Path.resolve() from the sandbox execroot.
+filegroup(
+    name = "generator_templates",
+    srcs = glob([
+        "templates/jinja/**/*.jinja",
+        "templates/schemas/*.yaml",
+    ]),
+    visibility = ["//visibility:public"],
+)
+
+py_binary(
+    name = "jinja2cpp",
+    srcs = ["jinja2cpp.py"],
+    legacy_create_init = 0,
+    python_version = "3.12.3",
+    target_compatible_with = ["@platforms//os:linux"],
+    visibility = ["//visibility:public"],
+    deps = [
+        requirement("jinja2"),
+        requirement("jsonschema"),
+        requirement("pyyaml"),
+    ],
+)

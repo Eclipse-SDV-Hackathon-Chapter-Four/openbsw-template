@@ -1,0 +1,45 @@
+/********************************************************************************
+ * Copyright (c) 2024 Accenture
+ *
+ * This program and the accompanying materials are made available under the
+ * terms of the Apache License Version 2.0 which is available at
+ * https://www.apache.org/licenses/LICENSE-2.0
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ ********************************************************************************/
+
+#include "util/logger/LevelInfo.h"
+
+#include "util/format/AttributedString.h"
+#ifndef LOGGER_NO_LEGACY_API
+
+namespace util
+{
+namespace logger
+{
+using ::util::format::BOLD;
+
+constexpr ::etl::array<LevelInfo::PlainInfo, LEVEL_COUNT> LevelInfo::_defaultConstLevelInfos
+    = {{{{"DEBUG", {format::Color::DEFAULT_COLOR, 0U, format::Color::DEFAULT_COLOR}}, LEVEL_DEBUG},
+        {{"INFO", {format::Color::DEFAULT_COLOR, 0U, format::Color::DEFAULT_COLOR}}, LEVEL_INFO},
+        {{"WARN", {format::Color::YELLOW, BOLD, format::Color::DEFAULT_COLOR}}, LEVEL_WARN},
+        {{"ERROR", {format::Color::RED, BOLD, format::Color::DEFAULT_COLOR}}, LEVEL_ERROR},
+        {{"CRITICAL", {format::Color::DEFAULT_COLOR, 0U, format::Color::DEFAULT_COLOR}},
+         LEVEL_CRITICAL},
+        {{"NONE", {format::Color::DEFAULT_COLOR, 0U, format::Color::DEFAULT_COLOR}}, LEVEL_NONE}}};
+
+LevelInfo::TableType LevelInfo::getDefaultTable() { return TableType(_defaultConstLevelInfos); }
+
+LevelInfo& LevelInfo::operator=(LevelInfo const& src)
+{
+    if (this != &src)
+    {
+        _plainInfo = src._plainInfo;
+    }
+    return *this;
+}
+
+} /* namespace logger */
+} /* namespace util */
+
+#endif /* LOGGER_NO_LEGACY_API */

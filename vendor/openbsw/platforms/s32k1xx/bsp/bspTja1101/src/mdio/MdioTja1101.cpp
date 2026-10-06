@@ -1,0 +1,159 @@
+/********************************************************************************
+ * Copyright (c) 2025 Accenture
+ *
+ * This program and the accompanying materials are made available under the
+ * terms of the Apache License Version 2.0 which is available at
+ * https://www.apache.org/licenses/LICENSE-2.0
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ ********************************************************************************/
+
+#include "mdio/MdioTja1101.h"
+
+#include "bsp/timer/SystemTimer.h"
+#include "io/Io.h"
+#include "outputManager/Output.h"
+
+namespace
+{
+static uint32_t const MIIM_READ_FRAME   = 0x60000000;
+static uint32_t const MIIM_WRITE_FRAME  = 0x50020000;
+static uint32_t const CLOCK_DELAY_TICKS = 2;
+
+uint32_t
+prepareMIIMFrame(uint8_t const phyAddr, uint8_t const regAddr, uint16_t const data, bool const read)
+{
+    uint32_t frame = read ? MIIM_READ_FRAME : MIIM_WRITE_FRAME;
+    frame |= ((phyAddr & 0x1f) << 23);
+    frame |= ((regAddr & 0x1f) << 18);
+    frame |= data;
+    return frame;
+}
+
+} // namespace
+
+namespace enetphy
+{
+
+::bsp::BspReturnCode
+MdioTja1101::miimRead(uint8_t const phyAddr, uint8_t const regAddr, uint16_t& pData)
+{
+    uint32_t frame                    = prepareMIIMFrame(phyAddr, regAddr, 0, true);
+    ::bsp::BspReturnCode const status = transfer(&frame, true);
+    pData                             = frame & 0xffff;
+    return status;
+}
+
+::bsp::BspReturnCode
+MdioTja1101::miimWrite(uint8_t const phyAddr, uint8_t const regAddr, uint16_t const data)
+{
+    uint32_t frame = prepareMIIMFrame(phyAddr, regAddr, data, false);
+    return transfer(&frame, false);
+}
+
+uint16_t MdioTja1101::getDataPin() const
+{
+    bool rv = false;
+    ::bios::Output::get(_config.dataPin, rv);
+    return (true == rv) ? 1U : 0U;
+}
+
+::bsp::BspReturnCode MdioTja1101::transfer(uint32_t* const frame, bool const read) const
+{
+    // Clause 22 frame: PRE(32) | ST(01) | OP(10/01) | PHYAD(5) | REGAD(5) | TA(2) | DATA(16)
+    Io::PinConfiguration mdioPinConf;
+    Io::getConfiguration(tja1101config.mdioPin, mdioPinConf);
+
+    mdioPinConf.dir = Io::Direction::_OUT;
+    Io::setConfiguration(tja1101config.mdioPin, mdioPinConf);
+
+    // PRE: 32 ones
+    Output::set(_config.dataPin, 1U);
+    for (uint8_t i = 0; i < 32; ++i)
+    {
+        Output::set(_config.clockPin, 0U);
+        sysDelayUs(CLOCK_DELAY_TICKS);
+        Output::set(_config.clockPin, 1U);
+        sysDelayUs(CLOCK_DELAY_TICKS);
+    }
+
+    // ST + OP + PHYAD + REGAD (14 bits, MSB first)
+    uint16_t data = *frame >> 16;
+    for (uint8_t i = 0; i < 14; ++i)
+    {
+        Output::set(_config.clockPin, 0U);
+        Output::set(_config.dataPin, ((data & 0x8000) > 0));
+        sysDelayUs(CLOCK_DELAY_TICKS);
+        Output::set(_config.clockPin, 1U);
+        sysDelayUs(CLOCK_DELAY_TICKS);
+        data <<= 1;
+    }
+
+    if (read)
+    {
+        // TA: release bus (Z) for TA[1], PHY drives 0 for TA[0]
+        Output::set(_config.clockPin, 0U);
+        sysDelayUs(CLOCK_DELAY_TICKS);
+        mdioPinConf.dir = Io::Direction::_IN;
+        Io::setConfiguration(tja1101config.mdioPin, mdioPinConf);
+        Output::set(_config.clockPin, 1U); // TA[1]: Z
+        sysDelayUs(CLOCK_DELAY_TICKS);
+        Output::set(_config.clockPin, 0U);
+        sysDelayUs(CLOCK_DELAY_TICKS);
+        Output::set(_config.clockPin, 1U); // TA[0]: PHY drives 0
+        sysDelayUs(CLOCK_DELAY_TICKS);
+
+        // DATA: 16 bits driven by PHY, sampled on rising edge
+        data = 0;
+        for (int8_t i = 15; i >= 0; --i)
+        {
+            Output::set(_config.clockPin, 0U);
+            sysDelayUs(CLOCK_DELAY_TICKS);
+            data |= (getDataPin() << i);
+            Output::set(_config.clockPin, 1U);
+            sysDelayUs(CLOCK_DELAY_TICKS);
+        }
+
+        mdioPinConf.dir = Io::Direction::_OUT;
+        Io::setConfiguration(tja1101config.mdioPin, mdioPinConf);
+
+        *frame = data & 0xffff;
+    }
+    else
+    {
+        // TA: controller drives 1 for TA[1], 0 for TA[0]
+        Output::set(_config.clockPin, 0U);
+        Output::set(_config.dataPin, 1U); // TA[1] = 1
+        sysDelayUs(CLOCK_DELAY_TICKS);
+        Output::set(_config.clockPin, 1U);
+        sysDelayUs(CLOCK_DELAY_TICKS);
+        Output::set(_config.clockPin, 0U);
+        Output::set(_config.dataPin, 0U); // TA[0] = 0
+        sysDelayUs(CLOCK_DELAY_TICKS);
+        Output::set(_config.clockPin, 1U);
+        sysDelayUs(CLOCK_DELAY_TICKS);
+
+        // DATA: 16 bits driven by controller, MSB first
+        data = *frame & 0xffff;
+        for (uint8_t i = 0; i < 16; i++)
+        {
+            Output::set(_config.clockPin, 0U);
+            Output::set(_config.dataPin, ((data & 0x8000) > 0));
+            data <<= 1;
+            sysDelayUs(CLOCK_DELAY_TICKS);
+            Output::set(_config.clockPin, 1U);
+            sysDelayUs(CLOCK_DELAY_TICKS);
+        }
+    }
+
+    // Return bus to idle (CLK low, MDIO high-Z)
+    Output::set(_config.clockPin, 0U);
+    Output::set(_config.dataPin, 1U);
+    sysDelayUs(CLOCK_DELAY_TICKS);
+    mdioPinConf.dir = Io::Direction::_IN;
+    Io::setConfiguration(tja1101config.mdioPin, mdioPinConf);
+
+    return ::bsp::BSP_OK;
+}
+
+} // namespace enetphy

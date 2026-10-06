@@ -1,0 +1,88 @@
+/********************************************************************************
+ * Copyright (c) 2024 Accenture
+ *
+ * This program and the accompanying materials are made available under the
+ * terms of the Apache License Version 2.0 which is available at
+ * https://www.apache.org/licenses/LICENSE-2.0
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ ********************************************************************************/
+
+#include "util/format/StringWriter.h"
+
+#include "util/format/PrintfArgumentReader.h"
+#include "util/format/PrintfFormatter.h"
+
+#include <util/estd/va_list_ref.h>
+
+namespace util
+{
+namespace format
+{
+using ::util::string::ConstString;
+
+StringWriter& StringWriter::endl()
+{
+    _stream.write(static_cast<uint8_t>('\n'));
+    return *this;
+}
+
+StringWriter& StringWriter::write(char const c)
+{
+    _stream.write(static_cast<uint8_t>(c));
+    return *this;
+}
+
+StringWriter& StringWriter::write(char const* const str)
+{
+    if (str != nullptr)
+    {
+        (void)(write(str, strlen(str)));
+    }
+    return *this;
+}
+
+StringWriter& StringWriter::write(char const* const chars, size_t const length)
+{
+    _stream.write_string_view(::etl::string_view(chars, length));
+    return *this;
+}
+
+StringWriter& StringWriter::write(ConstString const& str)
+{
+    return write(str.data(), str.length());
+}
+
+// NOLINTNEXTLINE(cert-dcl50-cpp): va_list usage only for printing functionalities.
+StringWriter& StringWriter::printf(char const* const formatString, ...)
+{
+    // va_list is a C array on some ABIs, so va_start/va_end/passing it on inevitably decays it.
+    // NOLINTBEGIN(cppcoreguidelines-pro-type-vararg,cppcoreguidelines-pro-bounds-array-to-pointer-decay)
+    va_list ap;
+    va_start(ap, formatString);
+    PrintfArgumentReader argReader(ap);
+    static_cast<void>(vprintf(formatString, argReader));
+    va_end(ap);
+    // NOLINTEND(cppcoreguidelines-pro-type-vararg,cppcoreguidelines-pro-bounds-array-to-pointer-decay)
+    return *this;
+}
+
+StringWriter& StringWriter::vprintf(char const* const formatString, va_list ap)
+{
+    PrintfArgumentReader argReader(ap);
+    return vprintf(formatString, argReader);
+}
+
+StringWriter&
+StringWriter::vprintf(char const* const formatString, IPrintfArgumentReader& argReader)
+{
+    if (formatString != nullptr)
+    {
+        PrintfFormatter formatter(_stream);
+        formatter.format(formatString, argReader);
+    }
+    return *this;
+}
+
+} // namespace format
+} // namespace util

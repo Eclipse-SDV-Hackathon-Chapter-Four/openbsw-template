@@ -1,0 +1,110 @@
+# *******************************************************************************
+# Copyright (c) 2026 Accenture
+#
+# This program and the accompanying materials are made available under the
+# terms of the Apache License Version 2.0 which is available at
+# https://www.apache.org/licenses/LICENSE-2.0
+#
+# SPDX-License-Identifier: Apache-2.0
+# *******************************************************************************
+
+load("@rules_cc//cc:cc_library.bzl", "cc_library")
+load("@rules_cc//cc:cc_test.bzl", "cc_test")
+load("//bazel/config/build_variant:compatibility.bzl", "unit_test_only")
+
+# Compiled RTOS implementation. Every platform must declare this via its platform flags.
+#   Override: --//libs/bsw/async:async_rtos_impl=//path/to:your_rtos_impl
+label_flag(
+    name = "async_rtos_impl",
+    build_setting_default = "//bazel/config:no_implementation",
+    visibility = ["//visibility:public"],
+)
+
+# RTOS adapter. Every platform must declare this via its platform flags.
+#   Override: --//libs/bsw/async:async_platform=//path/to:your_async_platform
+label_flag(
+    name = "async_platform",
+    build_setting_default = "//bazel/config:no_implementation",
+    visibility = ["//visibility:public"],
+)
+
+# Async binding (provides the RTOS-support define and runtime binding for the async layer).
+#   Default:  referenceApp binding
+#   Override: --//libs/bsw/async:async_binding=//path/to:your_binding
+label_flag(
+    name = "async_binding",
+    build_setting_default = "//executables/referenceApp/asyncBinding:async_binding",
+    visibility = ["//visibility:public"],
+)
+
+# Circular dependency present on the CMake side: async -> asyncBinding -> runtime -> async
+# Split off async_headers to break the circular dependency for Bazel.
+cc_library(
+    name = "async_headers",
+    hdrs = [
+        "include/async/Async.h",
+        "include/async/util/Call.h",
+        "include/async/util/MemberCall.h",
+    ],
+    strip_include_prefix = "include",
+    visibility = ["//visibility:public"],
+    deps = [
+        "//libs/3rdparty/etl",
+    ],
+)
+
+cc_library(
+    name = "async",
+    visibility = ["//visibility:public"],
+    deps = [
+        ":async_headers",
+        ":async_platform",
+    ],
+)
+
+cc_library(
+    name = "async_mock",
+    hdrs = [
+        "mock/gmock/include/async/AsyncMock.h",
+        "mock/gmock/include/async/LockMock.h",
+        "mock/gmock/include/async/RunnableMock.h",
+        "mock/gmock/include/async/TestContext.h",
+        "mock/gmock/include/async/TimeoutMock.h",
+        "mock/gmock/include/async/Types.h",
+    ],
+    strip_include_prefix = "mock/gmock/include",
+    target_compatible_with = unit_test_only(),
+    visibility = ["//visibility:public"],
+    deps = [
+        ":async_headers",
+        "//libs/3rdparty/etl",
+        "//libs/3rdparty/googletest:gtest",
+    ],
+)
+
+cc_library(
+    name = "async_mock_impl",
+    srcs = [
+        "mock/gmock/src/async/AsyncMock.cpp",
+        "mock/gmock/src/async/TestContext.cpp",
+        "mock/gmock/src/async/Types.cpp",
+    ],
+    implementation_deps = [":async_mock"],
+    target_compatible_with = unit_test_only(),
+    visibility = ["//visibility:public"],
+)
+
+cc_test(
+    name = "async_test",
+    srcs = [
+        "test/src/async/TestContextTest.cpp",
+        "test/src/async/TypesTest.cpp",
+        "test/src/async/util/CallTest.cpp",
+    ],
+    target_compatible_with = unit_test_only(),
+    deps = [
+        ":async_mock",
+        ":async_mock_impl",
+        "//libs/3rdparty/googletest:gtest_main",
+    ],
+)

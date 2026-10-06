@@ -1,0 +1,72 @@
+///////////////////////////////////////////////////////////////////////////////////
+// Copyright (c) 2026 Accenture
+//
+// This program and the accompanying materials are made available under the
+// terms of the Apache License Version 2.0 which is available at
+// https://www.apache.org/licenses/LICENSE-2.0
+//
+// SPDX-License-Identifier: Apache-2.0
+////////////////////////////////////////////////////////////////////////////////////
+
+//! A simple "Hello World" Rust library demonstrating Rust integration with OpenBSW.
+//!
+//! This crate provides a minimal example of how to expose Rust functions to C++ code
+//! in the OpenBSW build system.
+//!
+//! # FFI Approach
+//!
+//! This example uses the **manual FFI approach**, where:
+//! - Rust functions are marked with `#[no_mangle]` and `extern "C"`
+//! - A corresponding C/C++ header file is written by hand
+//!
+//! This is not the only way to expose Rust to C++. Alternative approaches include:
+//! - **[cbindgen](https://github.com/mozilla/cbindgen)**: Automatically generates C/C++ headers from Rust code
+//! - **[cxx](https://cxx.rs/)**: Provides safe bidirectional interop between Rust and C++
+//!
+//! The manual approach was chosen here for simplicity.
+//!
+//! # Target Compatibility
+//!
+//! Uses `no_std` for compatibility with both POSIX and embedded targets.
+
+#![no_std]
+
+extern crate openbsw_console_out;
+extern crate openbsw_panic_handler;
+
+pub mod async_tasks;
+mod runtime_glue;
+
+use core::fmt::Write;
+use openbsw_console_out::Console;
+use openbsw_logger::{bsw_debug, bsw_info, declare_logger_component};
+
+use log::info;
+
+declare_logger_component!(DEMO);
+
+/// Prints "Hello from Rust!" to BSP stdout via putByteToStdout. Also prints some rust log messages,
+/// mapped to the DEMO logging component.
+#[unsafe(no_mangle)]
+pub extern "C" fn rust_hello_world() {
+    bsw_debug!(DEMO, "Rust FFI called 🦀");
+    write!(Console, "Hello from Rust!\r\n").ok();
+    bsw_info!(DEMO, "Rust FFI completed");
+    // Plain log::info! routes through the default component (e. g. RUST) configured from C++.
+    info!("Hello from rust crate without logger mapping");
+}
+
+/// Adds two numbers and returns the result.
+///
+/// # Arguments
+///
+/// * `a` - First number to add
+/// * `b` - Second number to add
+///
+/// # Returns
+///
+/// The sum of `a` and `b`.
+#[unsafe(no_mangle)]
+pub extern "C" fn rust_add(a: u32, b: u32) -> u32 {
+    a.wrapping_add(b)
+}

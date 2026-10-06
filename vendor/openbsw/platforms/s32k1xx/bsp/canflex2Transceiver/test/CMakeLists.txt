@@ -1,0 +1,15 @@
+add_executable(CanFlex2TransceiverTest src/can/CanFlex2TransceiverTest.cpp)
+
+target_link_libraries(
+    CanFlex2TransceiverTest
+    PRIVATE asyncMockImpl
+            bsp
+            canflex2Transceiver
+            cpp2can
+            bspIo
+            lifecycle
+            bspMock
+            gmock_main)
+
+gtest_discover_tests(CanFlex2TransceiverTest
+                     PROPERTIES LABELS "CanFlex2TransceiverTest")

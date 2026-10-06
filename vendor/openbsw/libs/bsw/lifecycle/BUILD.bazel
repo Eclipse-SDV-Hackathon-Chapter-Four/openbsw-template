@@ -1,0 +1,74 @@
+# *******************************************************************************
+# Copyright (c) 2026 Accenture
+#
+# This program and the accompanying materials are made available under the
+# terms of the Apache License Version 2.0 which is available at
+# https://www.apache.org/licenses/LICENSE-2.0
+#
+# SPDX-License-Identifier: Apache-2.0
+# *******************************************************************************
+
+load("@rules_cc//cc:cc_library.bzl", "cc_library")
+load("@rules_cc//cc:cc_test.bzl", "cc_test")
+load("//bazel/config/build_variant:compatibility.bzl", "unit_test_only")
+
+cc_library(
+    name = "lifecycle",
+    srcs = [
+        "src/lifecycle/AsyncLifecycleComponent.cpp",
+        "src/lifecycle/LifecycleComponent.cpp",
+        "src/lifecycle/LifecycleLogger.cpp",
+        "src/lifecycle/LifecycleManager.cpp",
+        "src/lifecycle/LifecycleManagerForwarder.cpp",
+        "src/lifecycle/SimpleLifecycleComponent.cpp",
+        "src/lifecycle/SingleContextLifecycleComponent.cpp",
+    ],
+    hdrs = glob(["include/**/*.h"]),
+    strip_include_prefix = "include",
+    visibility = ["//visibility:public"],
+    deps = [
+        "//libs/3rdparty/etl",
+        "//libs/bsw/async:async_headers",
+        "//libs/bsw/async:async_platform",
+        "//libs/bsw/util",
+    ],
+)
+
+cc_library(
+    name = "lifecycle_mock",
+    hdrs = [
+        "mock/gmock/include/lifecycle/LifecycleComponentCallbackMock.h",
+        "mock/gmock/include/lifecycle/LifecycleComponentMock.h",
+        "mock/gmock/include/lifecycle/LifecycleListenerMock.h",
+        "mock/gmock/include/lifecycle/LifecycleManagerMock.h",
+    ],
+    strip_include_prefix = "mock/gmock/include",
+    target_compatible_with = unit_test_only(),
+    visibility = ["//visibility:public"],
+    deps = [
+        ":lifecycle",
+        "//libs/3rdparty/googletest:gtest",
+    ],
+)
+
+cc_test(
+    name = "lifecycle_test",
+    srcs = [
+        "test/src/lifecycle/AsyncLifecycleComponentTest.cpp",
+        "test/src/lifecycle/LifecycleComponentTest.cpp",
+        "test/src/lifecycle/LifecycleManagerForwarderTest.cpp",
+        "test/src/lifecycle/LifecycleManagerInitializerTest.cpp",
+        "test/src/lifecycle/LifecycleManagerTest.cpp",
+        "test/src/lifecycle/SimpleLifecycleComponentTest.cpp",
+        "test/src/lifecycle/SingleContextLifecycleComponentTest.cpp",
+    ],
+    target_compatible_with = unit_test_only(),
+    deps = [
+        ":lifecycle",
+        ":lifecycle_mock",
+        "//libs/3rdparty/googletest:gtest_esr_extensions",
+        "//libs/3rdparty/googletest:gtest_main",
+        "//libs/bsw/async:async_mock_impl",
+        "//libs/bsw/util:util_mock",
+    ],
+)

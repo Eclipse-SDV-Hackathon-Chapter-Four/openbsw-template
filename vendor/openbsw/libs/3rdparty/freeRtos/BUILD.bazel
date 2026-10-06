@@ -1,0 +1,99 @@
+# *******************************************************************************
+# Copyright (c) 2026 Accenture
+#
+# This program and the accompanying materials are made available under the
+# terms of the Apache License Version 2.0 which is available at
+# https://www.apache.org/licenses/LICENSE-2.0
+#
+# SPDX-License-Identifier: Apache-2.0
+# *******************************************************************************
+
+load("@rules_cc//cc:cc_library.bzl", "cc_library")
+load("//bazel/config/build_variant:compatibility.bzl", "unit_test_only")
+
+# FreeRTOS port headers (portmacro.h). Every platform must declare this via its platform flags.
+#   Override: --//libs/3rdparty/freeRtos:freertos_port=//path/to:your_port
+label_flag(
+    name = "freertos_port",
+    build_setting_default = "//bazel/config:no_implementation",
+    visibility = ["//visibility:public"],
+)
+
+# FreeRTOS port implementation. Every platform must declare this via its platform flags.
+#   Override: --//libs/3rdparty/freeRtos:freertos_port_impl=//path/to:your_port_impl
+label_flag(
+    name = "freertos_port_impl",
+    build_setting_default = "//bazel/config:no_implementation",
+    visibility = ["//visibility:public"],
+)
+
+# FreeRTOS OS hooks. Every platform must declare this via its platform flags.
+#   Override: --//libs/3rdparty/freeRtos:freertos_os_hooks=//path/to:your_os_hooks
+label_flag(
+    name = "freertos_os_hooks",
+    build_setting_default = "//bazel/config:no_implementation",
+    visibility = ["//visibility:public"],
+)
+
+# FreeRTOS kernel implementation. Every platform must declare this via its platform flags.
+#   Override: --//libs/3rdparty/freeRtos:freertos_impl=//path/to:your_impl
+label_flag(
+    name = "freertos_impl",
+    build_setting_default = ":freertos",
+    visibility = ["//visibility:public"],
+)
+
+cc_library(
+    name = "freertos_headers",
+    hdrs = glob(["include/**/*.h"]),
+    strip_include_prefix = "include",
+    visibility = ["//visibility:public"],
+    deps = [
+        ":freertos_port",
+        "//libs/bsw/asyncFreeRtos:freertos_configuration",
+    ],
+)
+
+# Circular dependency present on the CMake side: freeRtos -> freeRtosPortImpl -> freeRtos
+# Split off freertos_headers and freertos_port_impl to break the circular dependency for Bazel
+cc_library(
+    name = "freertos",
+    srcs = [
+        "src/croutine.c",
+        "src/event_groups.c",
+        "src/list.c",
+        "src/queue.c",
+        "src/stream_buffer.c",
+        "src/tasks.c",
+        "src/timers.c",
+    ],
+    copts = ["-Wno-unused-variable"],
+    implementation_deps = [
+        ":freertos_os_hooks",
+        ":freertos_port_impl",
+    ],
+    visibility = ["//visibility:public"],
+    deps = [
+        ":freertos_headers",
+    ],
+)
+
+cc_library(
+    name = "freertos_mock",
+    srcs = ["mock/src/os/FreeRtosMock.cpp"],
+    hdrs = [
+        "mock/include/FreeRTOS.h",
+        "mock/include/event_groups.h",
+        "mock/include/os/FreeRtosMock.h",
+        "mock/include/task.h",
+        "mock/include/timers.h",
+    ],
+    strip_include_prefix = "mock/include",
+    target_compatible_with = unit_test_only(),
+    visibility = ["//visibility:public"],
+    deps = [
+        "//libs/3rdparty/etl",
+        "//libs/3rdparty/googletest:gtest",
+        "//libs/bsw/asyncFreeRtos:freertos_configuration",
+    ],
+)

@@ -1,0 +1,51 @@
+# *******************************************************************************
+# Copyright (c) 2024 Accenture
+#
+# This program and the accompanying materials are made available under the
+# terms of the Apache License Version 2.0 which is available at
+# https://www.apache.org/licenses/LICENSE-2.0
+#
+# SPDX-License-Identifier: Apache-2.0
+# *******************************************************************************
+
+name: Generate Puncover Report
+
+on: [workflow_call, push, pull_request]
+
+jobs:
+  elf_tool:
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Docker Environment
+        uses: ./.github/actions/setup-docker-env
+
+      - name: Run the build.py inside the docker container
+        run: >-
+          DOCKER_UID=$(id -u) DOCKER_GID=$(id -g) DOCKER_HISTORY=/dev/null docker compose run --rm development
+          python3 .ci/build.py --preset s32k148-freertos --platform arm --cxxid gcc --cxxstd 17 --config RelWithDebInfo
+
+      - name: Generate report inside the docker container
+        run: >-
+          DOCKER_UID=$(id -u) DOCKER_GID=$(id -g) DOCKER_HISTORY=/dev/null docker compose run --rm --workdir ${PWD}/tools/puncover_tool development
+          bash -c "
+          poetry install &&
+          poetry run puncover_tool
+          "
+
+      - name: Zip output as artifact
+        working-directory: tools/puncover_tool
+        run: |
+            zip -r puncover-report.zip output
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: puncover-report
+          path: tools/puncover_tool/puncover-report.zip

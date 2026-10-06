@@ -1,0 +1,154 @@
+# *******************************************************************************
+# Copyright (c) 2024 Accenture
+#
+# This program and the accompanying materials are made available under the
+# terms of the Apache License Version 2.0 which is available at
+# https://www.apache.org/licenses/LICENSE-2.0
+#
+# SPDX-License-Identifier: Apache-2.0
+# *******************************************************************************
+
+import argparse
+import sys
+from buildoperations import BuildOpTpl
+from buildoperations import run_builds
+
+# MATRIX
+commands = {
+    "tests-posix-debug": BuildOpTpl(
+        config_cmd="cmake --preset tests-posix-debug",
+        build_cmd="cmake --build --preset tests-posix-debug",
+        test_cmd="ctest --preset tests-posix-debug --output-on-failure",
+        configs=["Debug"],
+        platforms=["linux"],
+        build_dir="build/tests/posix/Debug",
+    ),
+    "tests-posix-release": BuildOpTpl(
+        config_cmd="cmake --preset tests-posix-release",
+        build_cmd="cmake --build --preset tests-posix-release",
+        test_cmd="ctest --preset tests-posix-release --output-on-failure",
+        configs=["Release"],
+        platforms=["linux"],
+        build_dir="build/tests/posix/Release",
+    ),
+    "tests-s32k1xx-debug": BuildOpTpl(
+        config_cmd="cmake --preset tests-s32k1xx-debug",
+        build_cmd="cmake --build --preset tests-s32k1xx-debug",
+        test_cmd="ctest --preset tests-s32k1xx-debug --output-on-failure",
+        configs=["Debug"],
+        platforms=["linux"],
+        build_dir="build/tests/s32k1xx/Debug",
+    ),
+    "tests-s32k1xx-release": BuildOpTpl(
+        config_cmd="cmake --preset tests-s32k1xx-release",
+        build_cmd="cmake --build --preset tests-s32k1xx-release",
+        test_cmd="ctest --preset tests-s32k1xx-release --output-on-failure",
+        configs=["Release"],
+        platforms=["linux"],
+        build_dir="build/tests/s32k1xx/Release",
+    ),
+    "tests-stm32-debug": BuildOpTpl(
+        config_cmd="cmake --preset tests-stm32-debug",
+        build_cmd="cmake --build --preset tests-stm32-debug",
+        test_cmd="ctest --preset tests-stm32-debug --output-on-failure",
+        configs=["Debug"],
+        platforms=["linux"],
+        build_dir="build/tests/stm32/Debug",
+    ),
+    "tests-stm32-release": BuildOpTpl(
+        config_cmd="cmake --preset tests-stm32-release",
+        build_cmd="cmake --build --preset tests-stm32-release",
+        test_cmd="ctest --preset tests-stm32-release --output-on-failure",
+        configs=["Release"],
+        platforms=["linux"],
+        build_dir="build/tests/stm32/Release",
+    ),
+    "posix-freertos": BuildOpTpl(
+        config_cmd="cmake --preset posix-freertos",
+        build_cmd="cmake --build --preset posix-freertos",
+        configs=["Debug", "Release", "RelWithDebInfo"],
+        platforms=["linux"],
+        build_dir="build/posix-freertos",
+    ),
+    "posix-threadx": BuildOpTpl(
+        config_cmd="cmake --preset posix-threadx",
+        build_cmd="cmake --build --preset posix-threadx",
+        configs=["Debug", "Release", "RelWithDebInfo"],
+        platforms=["linux"],
+        build_dir="build/posix-threadx",
+    ),
+    "posix-freertos-with-tracing": BuildOpTpl(
+        config_cmd="cmake --preset posix-freertos -DBUILD_TRACING=Yes",
+        build_cmd="cmake --build --preset posix-freertos",
+        configs=["Debug", "Release", "RelWithDebInfo"],
+        platforms=["linux"],
+        build_dir="build/posix-freertos",
+    ),
+    "posix-freertos-canfd": BuildOpTpl(
+        config_cmd="cmake --preset posix-freertos -DPLATFORM_CAN0_USE_FD=ON",
+        build_cmd="cmake --build --preset posix-freertos",
+        configs=["Debug", "Release", "RelWithDebInfo"],
+        platforms=["linux"],
+        build_dir="build/posix-freertos",
+    ),
+    "posix-rust": BuildOpTpl(
+        config_cmd="cmake --preset posix-rust",
+        build_cmd="cmake --build --preset posix-rust",
+        configs=["Debug", "Release", "RelWithDebInfo"],
+        platforms=["linux"],
+        build_dir="build/posix-rust",
+    ),
+    "s32k148-rust": BuildOpTpl(
+        config_cmd="cmake --preset s32k148-rust",
+        build_cmd="cmake --build --preset s32k148-rust",
+        configs=["Debug", "Release", "RelWithDebInfo"],
+        platforms=["arm"],
+        cxxids=["gcc"],
+        build_dir="build/s32k148-rust",
+    ),
+    "s32k148-freertos": BuildOpTpl(
+        config_cmd="cmake --preset s32k148-freertos",
+        build_cmd="cmake --build --preset s32k148-freertos",
+        configs=["Debug", "Release", "RelWithDebInfo"],
+        platforms=["arm"],
+        build_dir="build/s32k148-freertos",
+    ),
+    "s32k148-threadx": BuildOpTpl(
+        config_cmd="cmake --preset s32k148-threadx",
+        build_cmd="cmake --build --preset s32k148-threadx",
+        configs=["Debug", "Release", "RelWithDebInfo"],
+        platforms=["arm"],
+        build_dir="build/s32k148-threadx",
+    )
+}
+
+
+def main(argv: list[str] | None = None) -> int:
+    pargs = argparse.ArgumentParser(description="Build runner")
+
+    pargs.add_argument("--preset", default="", help="preset name (optional)")
+
+    pargs.add_argument(
+        "--cxxid", default="", help="C++ compiler id (clang or gcc - optional)"
+    )
+
+    pargs.add_argument("--cxxstd", type=int, default=0, help="C++ standard (optional)")
+
+    pargs.add_argument(
+        "--config",
+        default="",
+        help='Build config ("Debug", "Release", "RelWithDebInfo" - optional)',
+    )
+
+    pargs.add_argument(
+        "--platform", default="", help='Target platform ("arm" or "linux" - optional)'
+    )
+
+    args = pargs.parse_args(argv)
+
+    run_builds(args, commands)
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())

@@ -1,0 +1,51 @@
+/********************************************************************************
+ * Copyright (c) 2024 Accenture
+ *
+ * This program and the accompanying materials are made available under the
+ * terms of the Apache License Version 2.0 which is available at
+ * https://www.apache.org/licenses/LICENSE-2.0
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ ********************************************************************************/
+
+#pragma once
+
+#include "transport/AbstractTransportLayer.h"
+#include "uds/UdsConfig.h"
+#include "uds/base/AbstractDiagJob.h"
+#include "uds/base/DiagJobRoot.h"
+
+namespace uds
+{
+class IDiagSessionManager;
+
+/**
+ * IDiagDispatcher is an abstract class used by
+ * services which need access to the diag dispatcher
+ *
+ *
+ *
+ *
+ */
+class IDiagDispatcher
+{
+public:
+    /**
+     * Constructor
+     * \param   sessionManager  IDiagSessionManager
+     */
+    explicit IDiagDispatcher(IDiagSessionManager& sessionManager)
+    : fSessionManager(sessionManager), fEnabled(true)
+    {}
+
+    virtual ::transport::AbstractTransportLayer::ErrorCode resume(
+        ::transport::TransportMessage& transportMessage,
+        ::transport::ITransportMessageProcessedListener* pNotificationListener)
+        = 0;
+
+public:
+    IDiagSessionManager& fSessionManager;
+    bool fEnabled;
+};
+
+} // namespace uds

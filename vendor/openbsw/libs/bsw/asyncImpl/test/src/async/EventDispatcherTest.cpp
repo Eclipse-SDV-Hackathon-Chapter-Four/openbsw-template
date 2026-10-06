@@ -1,0 +1,91 @@
+/********************************************************************************
+ * Copyright (c) 2024 Accenture
+ *
+ * This program and the accompanying materials are made available under the
+ * terms of the Apache License Version 2.0 which is available at
+ * https://www.apache.org/licenses/LICENSE-2.0
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ ********************************************************************************/
+
+#include "async/EventDispatcher.h"
+
+#include <etl/delegate.h>
+
+#include <gmock/gmock.h>
+
+namespace
+{
+using namespace ::async;
+using namespace ::testing;
+
+class EventDispatcherTest : public Test
+{
+public:
+    using HandlerFunctionType = ::etl::delegate<void()>;
+
+    MOCK_METHOD(void, handleEvent1, ());
+    MOCK_METHOD(void, handleEvent2, ());
+    MOCK_METHOD(void, handleEvent3, ());
+};
+
+struct TestLock
+{
+    TestLock() {}
+
+    ~TestLock() {}
+};
+
+TEST_F(EventDispatcherTest, testAll)
+{
+    EventDispatcher<3, TestLock> cut;
+    {
+        // set two event handlers
+        cut.setEventHandler(
+            0U,
+            HandlerFunctionType::create<EventDispatcherTest, &EventDispatcherTest::handleEvent1>(
+                *this));
+        cut.setEventHandler(
+            2U,
+            HandlerFunctionType::create<EventDispatcherTest, &EventDispatcherTest::handleEvent3>(
+                *this));
+        // handle all events (in correct order)
+        Sequence seq;
+        EXPECT_CALL(*this, handleEvent1()).InSequence(seq);
+        EXPECT_CALL(*this, handleEvent3()).InSequence(seq);
+        cut.handleEvents(7U);
+        Mock::VerifyAndClearExpectations(this);
+    }
+    {
+        // add third event handler and handle all events
+        cut.setEventHandler(
+            1U,
+            HandlerFunctionType::create<EventDispatcherTest, &EventDispatcherTest::handleEvent2>(
+                *this));
+        Sequence seq;
+        EXPECT_CALL(*this, handleEvent1()).InSequence(seq);
+        EXPECT_CALL(*this, handleEvent2()).InSequence(seq);
+        EXPECT_CALL(*this, handleEvent3()).InSequence(seq);
+        cut.handleEvents(7U);
+        Mock::VerifyAndClearExpectations(this);
+    }
+    {
+        // set single event and expect only single handler to be called
+        EXPECT_CALL(*this, handleEvent3());
+        cut.handleEvents(4U);
+        Mock::VerifyAndClearExpectations(this);
+    }
+    {
+        // remove handler and expect it to no more be called
+        // set two event handlers
+        cut.removeEventHandler(2U);
+        // handle all events (in correct order)
+        Sequence seq;
+        EXPECT_CALL(*this, handleEvent1()).InSequence(seq);
+        EXPECT_CALL(*this, handleEvent2()).InSequence(seq);
+        cut.handleEvents(7U);
+        Mock::VerifyAndClearExpectations(this);
+    }
+}
+
+} // namespace

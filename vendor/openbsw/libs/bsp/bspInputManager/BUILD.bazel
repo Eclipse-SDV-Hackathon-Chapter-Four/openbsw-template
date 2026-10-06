@@ -1,0 +1,69 @@
+# *******************************************************************************
+# Copyright (c) 2026 Accenture
+#
+# This program and the accompanying materials are made available under the
+# terms of the Apache License Version 2.0 which is available at
+# https://www.apache.org/licenses/LICENSE-2.0
+#
+# SPDX-License-Identifier: Apache-2.0
+# *******************************************************************************
+
+load("@rules_cc//cc:cc_library.bzl", "cc_library")
+load("@rules_cc//cc:cc_test.bzl", "cc_test")
+load("//bazel/config/build_variant:compatibility.bzl", "unit_test_only")
+
+# Headers-only split for posix unit tests.
+cc_library(
+    name = "bsp_input_manager_headers",
+    hdrs = [
+        "include/inputManager/AlternativeDigitalInput.h",
+        "include/inputManager/DigitalInput.h",
+        "include/inputManager/DigitalInputTester.h",
+    ],
+    strip_include_prefix = "include",
+    visibility = ["//visibility:public"],
+    deps = [
+        "//bazel/config/bsp:bsp_configuration",
+        "//bazel/config/bsp:bsp_io",
+        "//libs/3rdparty/etl",
+        "//libs/bsp/bspDynamicClient:bsp_dynamic_client",
+        "//libs/bsw/util",
+    ],
+)
+
+cc_library(
+    name = "bsp_input_manager",
+    srcs = [
+        "src/inputManager/AlternativeDigitalInput.cpp",
+        "src/inputManager/DigitalInput.cpp",
+        "src/inputManager/DigitalInputTester.cpp",
+    ],
+    hdrs = [
+        "include/inputManager/AlternativeDigitalInput.h",
+        "include/inputManager/DigitalInput.h",
+        "include/inputManager/DigitalInputTester.h",
+    ],
+    strip_include_prefix = "include",
+    target_compatible_with = ["//bazel/platform/constraints/soc:s32k148"],
+    visibility = ["//visibility:public"],
+    deps = [
+        "//bazel/config/bsp:bsp_configuration",
+        "//bazel/config/bsp:bsp_io",
+        "//libs/3rdparty/etl",
+        "//libs/bsp/bspDynamicClient:bsp_dynamic_client",
+        "//libs/bsp/bspInterrupts:bsp_interrupts",
+        "//libs/bsw/bsp",
+        "//libs/bsw/util",
+    ],
+)
+
+cc_test(
+    name = "bsp_input_manager_test",
+    srcs = ["test/src/IncludeTest.cpp"],
+    target_compatible_with = unit_test_only(),
+    deps = [
+        ":bsp_input_manager_headers",
+        "//libs/3rdparty/googletest:gtest_main",
+        "//libs/bsw/util:util_mock",
+    ],
+)

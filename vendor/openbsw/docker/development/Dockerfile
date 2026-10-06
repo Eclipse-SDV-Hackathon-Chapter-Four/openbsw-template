@@ -1,0 +1,128 @@
+FROM ubuntu:resolute-20260912 AS base-image
+
+
+FROM base-image AS amd64-downloads
+RUN apt-get update && apt-get install -y wget
+
+RUN wget -O gcc-arm.tar.xz https://developer.arm.com/-/media/Files/downloads/gnu/14.3.rel1/binrel/arm-gnu-toolchain-14.3.rel1-x86_64-arm-none-eabi.tar.xz
+RUN echo "8f6903f8ceb084d9227b9ef991490413014d991874a1e34074443c2a72b14dbd gcc-arm.tar.xz" | sha256sum -c
+
+RUN wget -O clang-arm.tar.xz https://github.com/ARM-software/LLVM-embedded-toolchain-for-Arm/releases/download/release-19.1.1/LLVM-ET-Arm-19.1.1-Linux-x86_64.tar.xz
+RUN echo "f659c625302f6d3fb50f040f748206f6fd6bb1fc7e398057dd2deaf1c1f5e8d1 clang-arm.tar.xz" | sha256sum -c
+
+RUN wget -O treefmt.tar.gz https://github.com/numtide/treefmt/releases/download/v2.1.0/treefmt_2.1.0_linux_amd64.tar.gz
+RUN echo "ce0863a3a9d73707eb8cb9887c7f97ad3fd4ed506ad0429a6ab67a6290905966 treefmt.tar.gz" | sha256sum -c
+
+RUN wget -O bazelisk https://github.com/bazelbuild/bazelisk/releases/download/v1.29.0/bazelisk-linux-amd64
+RUN echo "5a408715e932c0250d28bd84555f12edbf70117de42f9181691c736eacc4a992 bazelisk" | sha256sum -c
+
+RUN wget -O buildifier https://github.com/bazelbuild/buildtools/releases/download/v8.5.1/buildifier-linux-amd64
+RUN echo "887377fc64d23a850f4d18a077b5db05b19913f4b99b270d193f3c7334b5a9a7 buildifier" | sha256sum -c
+
+FROM base-image AS arm64-downloads
+RUN apt-get update && apt-get install -y wget
+
+RUN wget -O gcc-arm.tar.xz https://developer.arm.com/-/media/Files/downloads/gnu/14.3.rel1/binrel/arm-gnu-toolchain-14.3.rel1-aarch64-arm-none-eabi.tar.xz
+RUN echo "2d465847eb1d05f876270494f51034de9ace9abe87a4222d079f3360240184d3 gcc-arm.tar.xz" | sha256sum -c
+
+RUN wget -O clang-arm.tar.xz https://github.com/ARM-software/LLVM-embedded-toolchain-for-Arm/releases/download/release-19.1.1/LLVM-ET-Arm-19.1.1-Linux-aarch64.tar.xz
+RUN echo "0172cf1768072a398572cb1fc0bb42551d60181b3280f12c19401d94ca5162e6 clang-arm.tar.xz" | sha256sum -c
+
+RUN wget -O treefmt.tar.gz https://github.com/numtide/treefmt/releases/download/v2.1.0/treefmt_2.1.0_linux_arm64.tar.gz
+RUN echo "7c00ea14f69a95782063e8f86e143bede29c8a6757fea9075ffdfdb6590aa934 treefmt.tar.gz" | sha256sum -c
+
+RUN wget -O bazelisk https://github.com/bazelbuild/bazelisk/releases/download/v1.29.0/bazelisk-linux-arm64
+RUN echo "e20e8b0f4f240091b7a55bf17b9398bd4f40ee70ae0208dff95dd4c445fb4010 bazelisk" | sha256sum -c
+
+RUN wget -O buildifier https://github.com/bazelbuild/buildtools/releases/download/v8.5.1/buildifier-linux-arm64
+RUN echo "947bf6700d708026b2057b09bea09abbc3cafc15d9ecea35bb3885c4b09ccd04 buildifier" | sha256sum -c
+
+# Use TARGETARCH (docker built-in variable) to decide what external binary files to use
+ARG TARGETARCH
+FROM ${TARGETARCH}-downloads AS external-downloads
+
+FROM base-image
+
+
+RUN apt-get update && apt-get install -y \
+        bzip2 \
+        clang-17 \
+        clang-format-17 \
+        clang-tidy-17 \
+        cmake \
+        curl \
+        g++-14 \
+        gcc-14 \
+        git \
+        gitlint \
+        lcov \
+        libc++-17-dev \
+        libc++abi-17-dev \
+        libunwind-17-dev \
+        ninja-build \
+        pre-commit \
+        pre-commit-hooks \
+        python-is-python3 \
+        python3 \
+        python3-pip \
+        python3-venv \
+        ruby-rubygems \
+        tar \
+        tmux \
+        wget \
+        iproute2\
+        iputils-ping\
+        zip
+
+COPY --from=external-downloads /gcc-arm.tar.xz /gcc-arm.tar.xz
+RUN mkdir -p /opt/arm-gnu-toolchain \
+    && tar -xf /gcc-arm.tar.xz -C /opt/arm-gnu-toolchain --strip-components 1 \
+    && rm /gcc-arm.tar.xz
+
+COPY --from=external-downloads /clang-arm.tar.xz /clang-arm.tar.xz
+RUN mkdir -p /opt/llvm-et-arm \
+    && tar -xf /clang-arm.tar.xz -C /opt/llvm-et-arm --strip-components 1 \
+    && rm /clang-arm.tar.xz
+
+COPY --from=external-downloads /treefmt.tar.gz /treefmt.tar.gz
+RUN tar -xf treefmt.tar.gz \
+    && install -m 755 treefmt /usr/bin/treefmt \
+    && rm LICENSE README.md treefmt treefmt.tar.gz
+
+COPY --from=external-downloads /bazelisk /bazelisk
+RUN install -m 755 bazelisk /usr/bin/bazelisk \
+    && ln -s bazelisk /usr/bin/bazel \
+    && rm bazelisk
+
+COPY --from=external-downloads /buildifier /buildifier
+RUN install -m 755 buildifier /usr/bin/buildifier \
+    && rm buildifier
+
+RUN gem install esr-rim
+
+
+ENV RUSTUP_HOME=/opt/rustup
+ENV CARGO_HOME=/opt/cargo
+ENV PATH=/opt/cargo/bin:${PATH}
+# /opt/cargo and /opt/rustup are populated as root during the image build. Make
+# them world-accessible so the runtime UID injected via DOCKER_UID can use them.
+RUN curl --proto '=https' --tlsv1.2 --retry 5 --retry-all-errors --retry-delay 5 -sSfL \
+        https://sh.rustup.rs -o /tmp/rustup-init.sh \
+    && sh /tmp/rustup-init.sh -y --default-toolchain 1.96.0 --profile minimal \
+    && rm /tmp/rustup-init.sh \
+    && rustup component add rustfmt \
+    && rustup target add thumbv7em-none-eabihf \
+    && cargo install cbindgen --version 0.29.4 --locked \
+    && chmod -R a+rwX /opt/cargo /opt/rustup
+
+RUN python3 -m venv /opt/venv
+ENV PATH=/opt/venv/bin:${PATH}
+RUN --mount=type=bind,source=files/requirements.lock,target=/tmp/requirements.lock pip3 install -r /tmp/requirements.lock
+
+RUN useradd build
+RUN install -d /home/build --mode 0777 --owner build --group build
+RUN install -d /home/build/.cache --mode 0777 --owner build --group build
+COPY --chown=build:build --chmod=0666 files/.bashrc /home/build/.bashrc
+COPY --chown=build:build --chmod=0666 files/.bash_profile /home/build/.bash_profile
+
+USER build

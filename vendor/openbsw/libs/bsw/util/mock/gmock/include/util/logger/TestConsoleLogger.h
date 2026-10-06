@@ -1,0 +1,80 @@
+/********************************************************************************
+ * Copyright (c) 2024 Accenture
+ *
+ * This program and the accompanying materials are made available under the
+ * terms of the Apache License Version 2.0 which is available at
+ * https://www.apache.org/licenses/LICENSE-2.0
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ ********************************************************************************/
+
+#pragma once
+
+#include "util/logger/IComponentMapping.h"
+#include "util/logger/ILoggerOutput.h"
+
+#include <etl/span.h>
+
+namespace util
+{
+namespace logger
+{
+class LoggerComponentInfo
+{
+public:
+    LoggerComponentInfo(uint8_t& component, char const* name, Level level);
+
+    uint8_t& getComponent();
+    ComponentInfo getComponentInfo() const;
+    Level getLevel() const;
+
+private:
+    uint8_t& _component;
+    Level _level;
+    ComponentInfo::PlainInfo _componentInfo;
+};
+
+class TestConsoleLogger
+: private IComponentMapping
+, private ILoggerOutput
+{
+public:
+    TestConsoleLogger(etl::span<LoggerComponentInfo> firstComponentInfo);
+    virtual ~TestConsoleLogger();
+
+    static void init();
+    static void shutdown();
+
+    bool isEnabled(uint8_t componentIndex, Level level) const override;
+    Level getLevel(uint8_t componentIndex) const override;
+    LevelInfo getLevelInfo(Level level) const override;
+    ComponentInfo getComponentInfo(uint8_t componentIndex) const override;
+
+    // NOLINTNEXTLINE(cppcoreguidelines-pro-type-vararg): interface requires va_list for logger
+    // output forwarding
+    void logOutput(
+        ComponentInfo const& componentInfo,
+        LevelInfo const& levelInfo,
+        char const* str,
+        va_list ap) override;
+
+private:
+    void applyMapping();
+    void clearMapping();
+
+    LoggerComponentInfo* _firstComponent;
+    uint8_t _count;
+    TestConsoleLogger* _prevInstance;
+
+    static TestConsoleLogger* _instance;
+};
+
+class TestLoggingGuard
+{
+public:
+    TestLoggingGuard();
+    ~TestLoggingGuard();
+};
+
+} // namespace logger
+} // namespace util

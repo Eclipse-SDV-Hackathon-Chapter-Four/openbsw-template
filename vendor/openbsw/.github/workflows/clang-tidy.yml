@@ -1,0 +1,106 @@
+# *******************************************************************************
+# Copyright (c) 2024 Accenture
+#
+# This program and the accompanying materials are made available under the
+# terms of the Apache License Version 2.0 which is available at
+# https://www.apache.org/licenses/LICENSE-2.0
+#
+# SPDX-License-Identifier: Apache-2.0
+# *******************************************************************************
+
+name: Clang-tidy check
+
+on:
+  merge_group:
+  push:
+    branches:
+      - main
+  pull_request:
+
+jobs:
+  clang-tidy:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        preset: ["tests-posix-release", "tests-s32k1xx-release"]
+        config: [Release]
+        platform: [posix, s32k1xx]
+        exclude:
+          - preset: "tests-posix-release"
+            platform: "s32k1xx"
+          - preset: "tests-s32k1xx-release"
+            platform: "posix"
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Fetch clang-tidy diff refs
+        if: ${{ github.event_name == 'pull_request' || github.event_name == 'merge_group' }}
+        run: |
+          set -euo pipefail
+
+          if [[ "${{ github.event_name }}" == "pull_request" ]]; then
+            base_sha=$(python3 -c 'import json, os; print(json.load(open(os.environ["GITHUB_EVENT_PATH"], "r", encoding="utf-8"))["pull_request"]["base"]["sha"])')
+            head_sha=$(python3 -c 'import json, os; print(json.load(open(os.environ["GITHUB_EVENT_PATH"], "r", encoding="utf-8"))["pull_request"]["head"]["sha"])')
+          else
+            base_sha=$(python3 -c 'import json, os; print(json.load(open(os.environ["GITHUB_EVENT_PATH"], "r", encoding="utf-8"))["merge_group"]["base_sha"])')
+            head_sha="${{ github.sha }}"
+          fi
+
+          git fetch --no-tags origin \
+            "${base_sha}" \
+            "${head_sha}"
+
+      - name: Determine clang-tidy scope
+        id: scope
+        run: >-
+          python3 .ci/determine-clang-tidy-scope.py --event-name "${{ github.event_name }}"
+          --ref-name "${{ github.ref_name }}" --sha "${{ github.sha }}"
+          --event-path "${GITHUB_EVENT_PATH}" --output-file .clang-tidy-diff-files.txt
+          --github-output "${GITHUB_OUTPUT}"
+      - name: Setup Docker Environment
+        if: ${{ steps.scope.outputs.mode == 'full' || steps.scope.outputs.has_changes == 'true' }}
+        uses: ./.github/actions/setup-docker-env
+      - name: Run the ${{ matrix.platform }} ${{ matrix.config }} build inside the docker container
+        if: ${{ steps.scope.outputs.mode == 'full' || steps.scope.outputs.has_changes == 'true' }}
+        run: >-
+          DOCKER_UID=$(id -u) DOCKER_GID=$(id -g) DOCKER_HISTORY=/dev/null docker compose run --rm development
+          python3 .ci/build.py --preset ${{ matrix.preset }} --platform "linux" --cxxid "clang" --cxxstd "17" --config "${{ matrix.config }}"
+
+      - name: Resolve changed translation units for clang-tidy
+        if: ${{ steps.scope.outputs.mode == 'changed' && steps.scope.outputs.has_changes == 'true' }}
+        run: >-
+          DOCKER_UID=$(id -u) DOCKER_GID=$(id -g) DOCKER_HISTORY=/dev/null docker compose run --rm development
+          python3 .ci/resolve-clang-tidy-translation-units.py --build-directory=build/tests/${{ matrix.platform }}/${{ matrix.config }} --changed-files=.clang-tidy-diff-files.txt --output-file=.clang-tidy-changed-files.txt
+
+      - name: Run the clang-tidy.py inside the docker container
+        if: ${{ steps.scope.outputs.mode == 'full' || steps.scope.outputs.has_changes == 'true' }}
+        id: clang_tidy
+        env:
+          CLANG_TIDY_MODE: ${{ steps.scope.outputs.mode }}
+        run: |
+          set -euo pipefail
+
+          if [[ "${CLANG_TIDY_MODE}" == "full" ]]; then
+            DOCKER_UID=$(id -u) DOCKER_GID=$(id -g) DOCKER_HISTORY=/dev/null docker compose run --rm development \
+              python3 .ci/clang-tidy.py --build_directory=build/tests/${{ matrix.platform }}/${{ matrix.config }} --output_file=ct-findings.yaml --exclude="3rdparty|/test/|/mock/|/doc/examples/"
+          else
+            DOCKER_UID=$(id -u) DOCKER_GID=$(id -g) DOCKER_HISTORY=/dev/null docker compose run --rm development \
+              python3 .ci/clang-tidy.py --build_directory=build/tests/${{ matrix.platform }}/${{ matrix.config }} --output_file=ct-findings.yaml --exclude="3rdparty|/test/|/mock/|/doc/examples/" --file-list=.clang-tidy-changed-files.txt
+          fi
+
+      - name: Skip clang-tidy because no C/C++ files changed
+        if: ${{ steps.scope.outputs.mode == 'changed' && steps.scope.outputs.has_changes != 'true' }}
+        run: echo "Skipping clang-tidy because the diff does not contain modified C/C++ files."
+
+      - name: Upload clang-tidy findings
+        if: ${{ always() && steps.clang_tidy.outcome == 'failure' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: ct-findings-${{ matrix.platform }}-${{ matrix.config }}
+          path: ct-findings.yaml
+          if-no-files-found: warn
+          overwrite: true

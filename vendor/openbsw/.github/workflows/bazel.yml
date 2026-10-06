@@ -1,0 +1,90 @@
+# *******************************************************************************
+# Copyright (c) 2024 Accenture
+#
+# This program and the accompanying materials are made available under the
+# terms of the Apache License Version 2.0 which is available at
+# https://www.apache.org/licenses/LICENSE-2.0
+#
+# SPDX-License-Identifier: Apache-2.0
+# *******************************************************************************
+
+name: Bazel Build and Test
+
+on:
+  workflow_call:
+  push:
+    branches:
+      - main
+  pull_request:
+
+jobs:
+  bazel-ci:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Docker Environment
+        uses: ./.github/actions/setup-docker-env
+
+      # Fails if bazel --version fails in the docker container
+      - name: Bazel smoke test
+        run: >-
+          DOCKER_UID=$(id -u) DOCKER_GID=$(id -g) DOCKER_HISTORY=/dev/null
+          docker compose run --rm development
+          bazel version
+
+      # Fails if MODULE.bazel.lock is stale (invalid versions, yanked modules, extension errors).
+      # Fix locally with: bazel mod tidy --lockfile_mode=update
+      - name: Check Bazel lockfile
+        run: >-
+          DOCKER_UID=$(id -u) DOCKER_GID=$(id -g) DOCKER_HISTORY=/dev/null
+          docker compose run --rm development
+          bazel mod deps --lockfile_mode=error
+
+      # Fails if any BUILD/.bzl file is not formatted correctly.
+      # Fix locally with: bazel run //:format_fix
+      - name: Check Bazel formatting
+        run: >-
+          DOCKER_UID=$(id -u) DOCKER_GID=$(id -g) DOCKER_HISTORY=/dev/null
+          docker compose run --rm development
+          bazel run //:format_check
+
+      # Parses all BUILD files and resolves the dependency graph without compiling.
+      # Catches syntax errors, invalid labels, missing targets, and dependency cycles.
+      - name: Query all targets
+        run: >-
+          DOCKER_UID=$(id -u) DOCKER_GID=$(id -g) DOCKER_HISTORY=/dev/null
+          docker compose run --rm development
+          bazel query //...
+
+      # Compiles all targets for the host platform (Linux/posix).
+      # Targets with incompatible platform constraints are skipped automatically.
+      - name: Build all targets (host platform)
+        run: >-
+          DOCKER_UID=$(id -u) DOCKER_GID=$(id -g) DOCKER_HISTORY=/dev/null
+          docker compose run --rm development
+          bazel build //...
+
+      # Cross-compiles all targets for the example embedded platform using arm-none-eabi-gcc.
+      - name: Build all targets (s32k148 platform)
+        run: >-
+          DOCKER_UID=$(id -u) DOCKER_GID=$(id -g) DOCKER_HISTORY=/dev/null
+          docker compose run --rm development
+          bazel build --config=s32k148 //...
+
+      # Compiles all test targets for the unit-test platform without running them.
+      # A failure here is a compilation error not a failed test.
+      - name: Build all targets (posix_unit_test platform)
+        run: >-
+          DOCKER_UID=$(id -u) DOCKER_GID=$(id -g) DOCKER_HISTORY=/dev/null
+          docker compose run --rm development
+          bazel build --platforms=//bazel/platform:posix_unit_test //...
+
+      # Runs all test targets.
+      - name: Run all tests
+        run: >-
+          DOCKER_UID=$(id -u) DOCKER_GID=$(id -g) DOCKER_HISTORY=/dev/null
+          docker compose run --rm development
+          bazel test //...

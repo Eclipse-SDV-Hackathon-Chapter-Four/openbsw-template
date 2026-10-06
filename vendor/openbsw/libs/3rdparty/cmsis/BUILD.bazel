@@ -1,0 +1,29 @@
+# *******************************************************************************
+# Copyright (c) 2026 Accenture
+#
+# This program and the accompanying materials are made available under the
+# terms of the Apache License Version 2.0 which is available at
+# https://www.apache.org/licenses/LICENSE-2.0
+#
+# SPDX-License-Identifier: Apache-2.0
+# *******************************************************************************
+
+load("@rules_cc//cc:cc_library.bzl", "cc_library")
+
+cc_library(
+    name = "cmsis",
+    hdrs = [
+        "cmsis_clang.h",
+        "cmsis_compiler.h",
+        "cmsis_gcc.h",
+        "cmsis_version.h",
+        "core_cm4.h",
+        "m-profile/armv7m_mpu.h",
+        "m-profile/cmsis_clang_m.h",
+        "m-profile/cmsis_gcc_m.h",
+    ],
+    strip_include_prefix = ".",
+    # CMSIS ARM Cortex-M4 header library, compatible with any armv7e-m target.
+    target_compatible_with = ["@platforms//cpu:armv7e-m"],
+    visibility = ["//visibility:public"],
+)

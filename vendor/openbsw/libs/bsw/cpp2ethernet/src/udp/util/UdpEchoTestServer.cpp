@@ -1,0 +1,82 @@
+/********************************************************************************
+ * Copyright (c) 2025 Accenture
+ *
+ * This program and the accompanying materials are made available under the
+ * terms of the Apache License Version 2.0 which is available at
+ * https://www.apache.org/licenses/LICENSE-2.0
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ ********************************************************************************/
+
+#include "udp/util/UdpEchoTestServer.h"
+
+#include <udp/UdpLogger.h>
+
+// Logger API uses printf-style varargs for fixed diagnostic messages in this module.
+// NOLINTBEGIN(cppcoreguidelines-pro-type-vararg)
+namespace udp
+{
+
+using ::util::logger::Logger;
+using ::util::logger::UDP;
+
+UdpEchoTestServer::UdpEchoTestServer(
+    ip::IPAddress const& ipAddr,
+    uint16_t const rxPort,
+    ::ip::IPAddress const& multicastAddr,
+    AbstractDatagramSocket& socket)
+: _ipAddr(ipAddr), _multicastAddr(multicastAddr), _rxPort(rxPort), _socket(socket), _receiveData()
+{}
+
+bool UdpEchoTestServer::start()
+{
+    Logger::info(UDP, "UDP echo test server initialisation");
+
+    _socket.setDataListener(this);
+
+    if (_socket.bind(&_ipAddr, _rxPort) != ::udp::AbstractDatagramSocket::ErrorCode::UDP_SOCKET_OK)
+    {
+        Logger::error(UDP, "UDP socket bind failed");
+        return false;
+    }
+
+    Logger::info(UDP, "Listening on port %d.", _rxPort);
+
+    if (_socket.join(_multicastAddr) != ::udp::AbstractDatagramSocket::ErrorCode::UDP_SOCKET_OK)
+    {
+        Logger::error(UDP, "Multicast join failed");
+        return false;
+    }
+
+    Logger::info(UDP, "Joined multicast group");
+
+    return true;
+}
+
+void UdpEchoTestServer::stop()
+{
+    Logger::info(UDP, "Closing port %d.", _rxPort);
+    _socket.close();
+}
+
+void UdpEchoTestServer::dataReceived(
+    ::udp::AbstractDatagramSocket& /*socket*/,
+    ::ip::IPAddress sourceAddress,
+    uint16_t sourcePort,
+    ::ip::IPAddress /*destinationAddress*/,
+    uint16_t length)
+{
+    if (length > sizeof(_receiveData))
+    {
+        Logger::error(UDP, "Received oversized packet.");
+        return;
+    }
+
+    (void)_socket.read(&_receiveData[0U], length);
+    Logger::debug(UDP, "Echoing back %d bytes.", length);
+    (void)_socket.send(::udp::DatagramPacket(&_receiveData[0U], length, sourceAddress, sourcePort));
+}
+
+} // namespace udp
+
+// NOLINTEND(cppcoreguidelines-pro-type-vararg)

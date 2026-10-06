@@ -1,0 +1,69 @@
+/********************************************************************************
+ * Copyright (c) 2025 Accenture
+ *
+ * This program and the accompanying materials are made available under the
+ * terms of the Apache License Version 2.0 which is available at
+ * https://www.apache.org/licenses/LICENSE-2.0
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ ********************************************************************************/
+
+#include "async/FutureSupport.h"
+
+#include <etl/error_handler.h>
+#include <etl/to_string.h>
+
+#include <async/AsyncBinding.h>
+
+namespace async
+{
+static uint32_t const FUTURE_SUPPORT_BITS_TO_WAIT = 0x01U;
+
+FutureSupport::FutureSupport(ContextType const context) : _context(context), _eventName("future")
+{
+    ::etl::to_string(static_cast<uint8_t>(context), _eventName, true);
+    tx_event_flags_create(&_eventObject, const_cast<CHAR*>(_eventName.c_str()));
+}
+
+void FutureSupport::wait()
+{
+    ULONG const waitEventsTickCount = (AsyncBinding::AdapterType::getCurrentTaskContext()
+                                       == AsyncBinding::AdapterType::TASK_IDLE)
+                                          ? 0U
+                                          : AsyncBinding::WAIT_EVENTS_TICK_COUNT;
+    while (true)
+    {
+        tx_event_flags_get(
+            &_eventObject,
+            FUTURE_SUPPORT_BITS_TO_WAIT,
+            TX_AND_CLEAR, // wait for all bits, clear if successful
+            &_eventFlagsResult,
+            waitEventsTickCount);
+
+        if (_eventFlagsResult == FUTURE_SUPPORT_BITS_TO_WAIT)
+        {
+            return;
+        }
+    }
+}
+
+void FutureSupport::notify()
+{
+    tx_event_flags_set(
+        &_eventObject,
+        FUTURE_SUPPORT_BITS_TO_WAIT,
+        TX_OR // set eventMask bits in addition (OR)
+    );
+}
+
+void FutureSupport::assertTaskContext()
+{
+    ETL_ASSERT(verifyTaskContext(), ETL_ERROR_GENERIC("TaskContext must be verified"));
+}
+
+bool FutureSupport::verifyTaskContext()
+{
+    return _context == AsyncBinding::AdapterType::getCurrentTaskContext();
+}
+
+} // namespace async

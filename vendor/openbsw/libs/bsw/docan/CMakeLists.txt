@@ -1,0 +1,24 @@
+add_library(docan src/docan/common/DoCanLogger.cpp
+                  src/docan/datalink/DoCanFrameCodecConfigPresets.cpp)
+
+target_include_directories(docan PUBLIC include)
+
+target_link_libraries(
+    docan
+    PUBLIC async
+           bspInterrupts
+           common
+           cpp2can
+           etl
+           transport
+           util)
+
+if (BUILD_EXECUTABLE STREQUAL "unitTest")
+
+    add_library(docanMock INTERFACE)
+
+    target_include_directories(docanMock INTERFACE mock/gmock/include)
+
+    target_link_libraries(docanMock INTERFACE docan gmock)
+
+endif ()

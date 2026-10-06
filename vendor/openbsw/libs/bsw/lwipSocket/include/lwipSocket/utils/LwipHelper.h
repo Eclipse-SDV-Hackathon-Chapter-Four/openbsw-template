@@ -1,0 +1,55 @@
+/********************************************************************************
+ * Copyright (c) 2025 Accenture
+ *
+ * This program and the accompanying materials are made available under the
+ * terms of the Apache License Version 2.0 which is available at
+ * https://www.apache.org/licenses/LICENSE-2.0
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ ********************************************************************************/
+
+#pragma once
+
+#include "ethernet/NetworkInterface.h"
+
+#include <etl/queue_spsc_atomic.h>
+#include <etl/span.h>
+#include <ip/IPAddress.h>
+
+extern "C"
+{
+#include "lwip/ip_addr.h"
+#include "lwip/netif.h"
+#include "netif/etharp.h"
+} // extern "C"
+
+namespace lwiputils
+{
+
+struct RxCustomPbuf
+{
+    // `buf` always needs to stay the first member of this
+    // struct so we can upcast from `pbuf` to `RxCustomPbuf`
+    pbuf_custom buf;
+    void* driver;
+    void* slot;
+};
+
+using PbufQueue = ::etl::queue_spsc_atomic<pbuf*, 10>;
+
+err_t initNetifDriverParameters(::etl::span<uint8_t const, 6> const macAddr, netif& lwipNetif);
+::ip::IPAddress from_lwipIp(ip_addr_t const& lwipIp);
+void to_lwipIp(::ip::IPAddress const& ip, ip_addr_t* const dst);
+
+inline ip_addr_t to_lwipIp(::ip::IPAddress const& ip)
+{
+    ip_addr_t lwipIp = {};
+    to_lwipIp(ip, &lwipIp);
+    return lwipIp;
+}
+
+bool processPbufQueue(
+    ::lwiputils::PbufQueue& receiver,
+    ::etl::span<netif> lwnetifs,
+    ::etl::span<::ethernet::NetifVlanId const> vlanIds);
+} // namespace lwiputils

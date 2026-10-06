@@ -1,0 +1,130 @@
+/********************************************************************************
+ * Copyright (c) 2026 BMW AG
+ *
+ * This program and the accompanying materials are made available under the
+ * terms of the Apache License Version 2.0 which is available at
+ * https://www.apache.org/licenses/LICENSE-2.0
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ ********************************************************************************/
+
+#pragma once
+
+#include <cstdarg>
+#include <cstdint>
+#include <cstring>
+#include <string>
+
+#include <etl/array.h>
+#include <etl/span.h>
+#include <etl/vector.h>
+#include <gmock/gmock.h>
+
+#include "middleware/logger/Logger.h"
+#include "mock/LoggerMock.h"
+
+namespace middleware::logger::test
+{
+
+using ::testing::_;
+using ::testing::Cardinality;
+using ::testing::ElementsAreArray;
+using ::testing::Exactly;
+using ::testing::NiceMock;
+using ::testing::Return;
+using ::testing::StrEq;
+
+class DslLogger
+{
+public:
+    NiceMock<mock::LoggerMock> _mock;
+
+    void setup() {}
+
+    void teardown() {}
+
+    template<typename... Args>
+    void EXPECT_LOG(LogLevel const level, std::string const& format, Args... args)
+    {
+        ::etl::vector<uint32_t, sizeof...(Args)> vec;
+        push_all(vec, args...);
+
+        EXPECT_CALL(_mock, log(level, StrEq(format.c_str()), ElementsAreArray(vec)))
+            .Times(Exactly(1U))
+            .WillRepeatedly(Return());
+    }
+
+    template<typename... Args>
+    void EXPECT_EVENT_LOG(LogLevel const level, Error const error, Args... args)
+    {
+        static ::etl::array<uint8_t, sizeof(uint32_t) + sizeof(Error) + CountBytes<Args...>::VALUE>
+            buffer{};
+
+        uint32_t const messageId = logger::getMessageId(error);
+
+        uint32_t index = 0U;
+        copy_to_buffer(buffer.data(), index, messageId);
+        copy_to_buffer(buffer.data(), index, error);
+        copy_to_buffer(buffer.data(), index, args...);
+
+        EXPECT_CALL(_mock, logBinary(level, ElementsAreArray(buffer)))
+            .Times(Exactly(1U))
+            .WillRepeatedly(Return());
+    }
+
+    void EXPECT_NO_LOG() { EXPECT_CALL(_mock, log(_, _, _)).Times(0); }
+
+    void EXPECT_NO_BINARY_LOG() { EXPECT_CALL(_mock, logBinary(_, _)).Times(0); }
+
+    void EXPECT_NO_LOGGING()
+    {
+        EXPECT_NO_LOG();
+        EXPECT_NO_BINARY_LOG();
+    }
+
+private:
+    template<typename... Args>
+    struct CountBytes;
+
+    template<typename T>
+    struct CountBytes<T>
+    {
+        static constexpr size_t VALUE = sizeof(T);
+    };
+
+    template<typename T, typename... Args>
+    struct CountBytes<T, Args...>
+    {
+        static constexpr size_t VALUE = CountBytes<T>::VALUE + CountBytes<Args...>::VALUE;
+    };
+
+    template<typename T>
+    void push_all(::etl::ivector<uint32_t>& vec, T arg)
+    {
+        vec.push_back(static_cast<uint32_t>(arg));
+    }
+
+    template<typename T, typename... Args>
+    void push_all(::etl::ivector<uint32_t>& vec, T arg, Args... args)
+    {
+        vec.push_back(static_cast<uint32_t>(arg));
+        push_all(vec, args...);
+    }
+
+    template<typename T>
+    void copy_to_buffer(uint8_t* const buffer, uint32_t& index, T arg)
+    {
+        memcpy(&buffer[index], &arg, sizeof(arg));
+        index += sizeof(arg);
+    }
+
+    template<typename T, typename... Args>
+    void copy_to_buffer(uint8_t* const buffer, uint32_t& index, T arg, Args... args)
+    {
+        memcpy(&buffer[index], &arg, sizeof(arg));
+        index += sizeof(arg);
+        copy_to_buffer(buffer, index, args...);
+    }
+};
+
+} // namespace middleware::logger::test

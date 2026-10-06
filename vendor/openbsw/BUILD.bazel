@@ -1,0 +1,28 @@
+# *******************************************************************************
+# Copyright (c) 2026 Accenture
+#
+# This program and the accompanying materials are made available under the
+# terms of the Apache License Version 2.0 which is available at
+# https://www.apache.org/licenses/LICENSE-2.0
+#
+# SPDX-License-Identifier: Apache-2.0
+# *******************************************************************************
+
+load("@buildifier_prebuilt//:rules.bzl", "buildifier")
+
+buildifier(
+    name = "format_check",
+    diff_command = "diff",
+    # Exclude vendored googletest instance from format checks
+    exclude_patterns = ["./libs/3rdparty/googletest/**"],
+    lint_mode = "warn",
+    mode = "diff",
+)
+
+buildifier(
+    name = "format_fix",
+    # Exclude vendored googletest instance from format checks
+    exclude_patterns = ["./libs/3rdparty/googletest/**"],
+    lint_mode = "fix",
+    mode = "fix",
+)

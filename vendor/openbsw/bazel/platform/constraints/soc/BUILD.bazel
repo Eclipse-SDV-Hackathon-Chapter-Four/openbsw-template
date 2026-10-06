@@ -1,0 +1,53 @@
+# *******************************************************************************
+# Copyright (c) 2026 Accenture
+#
+# This program and the accompanying materials are made available under the
+# terms of the Apache License Version 2.0 which is available at
+# https://www.apache.org/licenses/LICENSE-2.0
+#
+# SPDX-License-Identifier: Apache-2.0
+# *******************************************************************************
+
+# SoC family constraint. Sits below @platforms//cpu which captures CPU
+# architecture but is too broad to identify a specific chip family.
+# This dimension captures the OpenBSW-supported SoC families.
+constraint_setting(
+    name = "soc",
+    visibility = ["//visibility:public"],
+)
+
+constraint_value(
+    name = "s32k148",
+    constraint_setting = ":soc",
+    visibility = ["//visibility:public"],
+)
+
+config_setting(
+    name = "is_s32k148",
+    constraint_values = [":s32k148"],
+    visibility = ["//visibility:public"],
+)
+
+constraint_value(
+    name = "stm32g4",
+    constraint_setting = ":soc",
+    visibility = ["//visibility:public"],
+)
+
+config_setting(
+    name = "is_stm32g4",
+    constraint_values = [":stm32g4"],
+    visibility = ["//visibility:public"],
+)
+
+constraint_value(
+    name = "stm32f4",
+    constraint_setting = ":soc",
+    visibility = ["//visibility:public"],
+)
+
+config_setting(
+    name = "is_stm32f4",
+    constraint_values = [":stm32f4"],
+    visibility = ["//visibility:public"],
+)

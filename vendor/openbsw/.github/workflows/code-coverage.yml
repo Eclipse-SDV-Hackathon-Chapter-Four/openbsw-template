@@ -1,0 +1,52 @@
+# *******************************************************************************
+# Copyright (c) 2024 Accenture
+#
+# This program and the accompanying materials are made available under the
+# terms of the Apache License Version 2.0 which is available at
+# https://www.apache.org/licenses/LICENSE-2.0
+#
+# SPDX-License-Identifier: Apache-2.0
+# *******************************************************************************
+
+name: Code Coverage
+
+on: [workflow_call, pull_request]
+
+jobs:
+  build:
+    runs-on: ubuntu-22.04
+    permissions:
+      contents: write
+
+    env:
+      BUILD_TYPE: Debug
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Docker Environment
+        uses: ./.github/actions/setup-docker-env
+
+      - name: Run the code_coverage.py inside the docker container
+        run: >-
+          DOCKER_UID=$(id -u) DOCKER_GID=$(id -g) DOCKER_HISTORY=/dev/null docker compose run --rm development
+          python3 .ci/code_coverage.py
+
+      - name: Zip code_coverage and coverage_badges
+        run: |
+              cd code_coverage
+              zip -r coverage.zip coverage
+              zip -r coverage_badges.zip coverage_badges
+
+      - name: Upload code coverage artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage
+          path: code_coverage/coverage.zip
+
+      - name: Upload Coverage Badge
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage_badges
+          path: code_coverage/coverage_badges.zip

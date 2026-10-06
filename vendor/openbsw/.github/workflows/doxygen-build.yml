@@ -1,0 +1,42 @@
+# *******************************************************************************
+# Copyright (c) 2024 Accenture
+#
+# This program and the accompanying materials are made available under the
+# terms of the Apache License Version 2.0 which is available at
+# https://www.apache.org/licenses/LICENSE-2.0
+#
+# SPDX-License-Identifier: Apache-2.0
+# *******************************************************************************
+
+name: Build and Deploy Doxygen Documentation
+
+on: [workflow_call, pull_request]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Build the docker image
+        run: |
+          docker build -f docker/Dockerfile.docs -t docs .
+
+      - name: Run the doxygen-docs.py inside the docker container
+        run: |
+          docker run --rm -v "$PWD:/home/jenkins" -w /home/jenkins --user $(id -u):4996 docs python3 .ci/doxygen-docs.py
+
+      - name: Move and zip the doxygen files
+        run: |
+          mv doc/api/doxygenOut/html doxygen_docs
+          zip -r doxygen_docs.zip doxygen_docs
+
+      - name: Upload doxygen_docs
+        uses: actions/upload-artifact@v4
+        with:
+          name: doxygen_docs
+          path: doxygen_docs.zip

@@ -1,0 +1,41 @@
+# *******************************************************************************
+# Copyright (c) 2026 Accenture
+#
+# This program and the accompanying materials are made available under the
+# terms of the Apache License Version 2.0 which is available at
+# https://www.apache.org/licenses/LICENSE-2.0
+#
+# SPDX-License-Identifier: Apache-2.0
+# *******************************************************************************
+
+"""
+RTOS related configuration parameters
+
+The rtos string flag controls which RTOS implementation is compiled into the build
+- Set it via --//bazel/config/rtos=<value>
+- Defaults to "freertos"
+"""
+
+load("@bazel_skylib//rules:common_settings.bzl", "string_flag")
+
+string_flag(
+    name = "rtos",
+    build_setting_default = "freertos",
+    values = [
+        "freertos",
+        "threadx",
+    ],
+    visibility = ["//visibility:public"],
+)
+
+config_setting(
+    name = "support_freertos",
+    flag_values = {":rtos": "freertos"},
+    visibility = ["//visibility:public"],
+)
+
+config_setting(
+    name = "support_threadx",
+    flag_values = {":rtos": "threadx"},
+    visibility = ["//visibility:public"],
+)

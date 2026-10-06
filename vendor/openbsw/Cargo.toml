@@ -1,0 +1,62 @@
+# *******************************************************************************
+# Copyright (c) 2024 Accenture
+#
+# This program and the accompanying materials are made available under the
+# terms of the Apache License Version 2.0 which is available at
+# https://www.apache.org/licenses/LICENSE-2.0
+#
+# SPDX-License-Identifier: Apache-2.0
+# *******************************************************************************
+
+[workspace]
+resolver = "3"
+
+members = [
+    "executables/referenceApp/rustHelloWorld",
+    "libs/bsw/logger/rust",
+    "libs/rust/panic_handler",
+    "libs/rust/console_out",
+    "libs/bsw/async/rust",
+]
+
+[workspace.package]
+version = "0.1.0"
+documentation = "https://eclipse-openbsw.github.io/openbsw/"
+
+# Workspace dependencies - add new Rust crates here as they are developed
+[workspace.dependencies]
+# External crates
+cbindgen = "0.29.4"
+log = "0.4"
+paste = "1"
+# NOTE: cbindgen is intentionally NOT a dependency here. C headers are generated
+# out-of-band via the cbindgen CLI (see .ci/cbindgen.py); keeping it out of the
+# build graph keeps the vendored dependency tree (libs/3rdparty/cargo-vendor)
+# tiny. The cbindgen CLI version lives in docker/development/Dockerfile.
+
+# openbsw-internal crates
+openbsw_async = { path = "libs/bsw/async/rust" }
+openbsw_console_out = { path = "libs/rust/console_out" }
+openbsw-logger = { path = "libs/bsw/logger/rust" }
+openbsw_panic_handler = { path = "libs/rust/panic_handler" }
+
+# Third-party crates
+embassy-executor = "0.7.0"
+critical-section = "1.2.0"
+
+[profile.dev]
+panic = "abort"
+lto = true
+opt-level = 2
+incremental = false
+codegen-units = 1
+debug = true
+
+# Similar to C++ we always build optimized (matching C++ -O2)
+[profile.release]
+panic = "abort"
+lto = true
+opt-level = 2
+incremental = false
+codegen-units = 1
+debug = true

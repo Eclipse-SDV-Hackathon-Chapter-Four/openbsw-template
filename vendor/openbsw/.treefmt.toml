@@ -1,0 +1,83 @@
+# *******************************************************************************
+# Copyright (c) 2024 Accenture
+#
+# This program and the accompanying materials are made available under the
+# terms of the Apache License Version 2.0 which is available at
+# https://www.apache.org/licenses/LICENSE-2.0
+#
+# SPDX-License-Identifier: Apache-2.0
+# *******************************************************************************
+
+[global]
+excludes = [
+  "**/3rdparty/*/**",
+  "**/Doxyfile",
+  "**/Makefile",
+  "*.*-format",
+  "*.cmm",
+  "*.css",
+  "*.dld",
+  "*.gdb",
+  "*.gif",
+  "*.gitignore",
+  "*.html",
+  "*.josh",
+  "*.json",
+  "*.png",
+  "*.rb",
+  "*.spec",
+  "LICENSE",
+  "admin/cmake/CodeCoverage.cmake",
+  "docker/**",
+  "tools/clang-format-wrapper",
+  "tools/puncover_tool/**",
+]
+
+[formatter.cpp]
+command = "tools/clang-format-wrapper"
+options = [ "--style=file", "-i" ]
+includes = [ "*.c", "*.cc", "*.cpp", "*.h", "*.hh", "*.hpp" ]
+
+[formatter.cmake]
+command = "cmake-format"
+options = [ "-i" ]
+includes = [ "**/CMakeLists.txt", "*.cmake", "CMakeLists.txt" ]
+
+[formatter.rust]
+command = "tools/rustfmt-wrapper"
+options = [ "--edition", "2024" ]
+includes = [ "*.rs" ]
+
+[formatter.buildifier]
+command = "buildifier"
+options = ["-lint=fix"]
+includes = [
+  "*.bzl",
+  "*.sky",
+  "BUILD",
+  "BUILD.bazel",
+  "MODULE.bazel",
+  "REPO.bazel",
+  "WORKSPACE",
+  "WORKSPACE.bazel",
+]
+
+[formatter.copyright]
+command = "python3"
+options = [
+  "tools/cr_checker/cr_checker.py",
+  "-t", "tools/cr_checker/templates.ini",
+  "-c", "tools/cr_checker/config.json",
+  "--exclusion-file", "tools/cr_checker/exclusions.txt",
+  "--fix",
+]
+includes = [
+  "*.c", "*.cc", "*.cpp", "*.h", "*.hh", "*.hpp", "*.s", "*.S",
+  "*.cmake", "**/CMakeLists.txt",
+  "*.py", "*.sh",
+  "*.toml", "*.yml", "*.yaml", "*.ini",
+  "*.rst", "*.md", "*.puml",
+  "*.bzl", "*.bazel", "BUILD", "BUILD.bazel", "MODULE.bazel", "WORKSPACE", "WORKSPACE.bazel",
+  "*.rs",
+  "*.trlc", "*.rsl",
+]

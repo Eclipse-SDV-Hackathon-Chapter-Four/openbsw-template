@@ -1,0 +1,91 @@
+/********************************************************************************
+ * Copyright (c) 2025 Accenture
+ *
+ * This program and the accompanying materials are made available under the
+ * terms of the Apache License Version 2.0 which is available at
+ * https://www.apache.org/licenses/LICENSE-2.0
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ ********************************************************************************/
+
+#include "ip/to_str.h"
+
+#include <etl/array.h>
+
+#include <gmock/gmock.h>
+
+using namespace ::testing;
+using namespace ::ip;
+
+TEST(StringConversion, to_str_ip4)
+{
+    IPAddress ip = make_ip4(241, 242, 243, 244);
+
+    ::etl::array<char, IP4_MAX_STRING_LENGTH> strBuffer;
+    EXPECT_THAT(to_str(ip, strBuffer).data(), StrEq("241.242.243.244"));
+
+    ::etl::array<char, 1U> smallBuffer;
+    EXPECT_EQ(0U, to_str(ip, smallBuffer).size());
+}
+
+#ifdef PLATFORM_SUPPORT_IPV6
+TEST(StringConversion, to_str_ip6)
+{
+    // clang-format off
+    ::etl::array<uint8_t, 16U> const addr = {
+            0x11, 0x12, 0x21, 0x22,
+            0x31, 0x32, 0x41, 0x42,
+            0x51, 0x52, 0x61, 0x62,
+            0x71, 0x72, 0x81, 0x82
+    };
+    // clang-format on
+    IPAddress ip = make_ip6(addr);
+
+    ::etl::array<char, IP6_MAX_STRING_LENGTH> strBuffer;
+    EXPECT_THAT(to_str(ip, strBuffer).data(), StrEq("1112:2122:3132:4142:5152:6162:7172:8182"));
+
+    ::etl::array<char, 1U> smallBuffer;
+    EXPECT_EQ(0U, to_str(ip, smallBuffer).size());
+}
+#endif
+
+TEST(StringConversion, to_str_ip4_endpoint)
+{
+    ::etl::array<uint8_t, 4U> const ipBuffer = {0xF1, 0xF2, 0xF3, 0xF4};
+    IPAddress ip                             = make_ip4(ipBuffer);
+
+    uint16_t port = 0xFFFF;
+    IPEndpoint endpoint(ip, port);
+
+    ::etl::array<char, IP4_ENDPOINT_MAX_STRING_LENGTH> strBuffer;
+    EXPECT_THAT(to_str(endpoint, strBuffer).data(), StrEq("241.242.243.244:65535"));
+
+    ::etl::array<char, 1U> smallBuffer;
+    EXPECT_EQ(0U, to_str(endpoint, smallBuffer).size());
+}
+
+#ifdef PLATFORM_SUPPORT_IPV6
+TEST(StringConversion, to_str_ip6_endpoint)
+{
+    // clang-format off
+    ::etl::array<uint8_t, 16U> const ipBuffer = {
+            0x11, 0x12, 0x21, 0x22,
+            0x31, 0x32, 0x41, 0x42,
+            0x51, 0x52, 0x61, 0x62,
+            0x71, 0x72, 0x81, 0x82
+    };
+    // clang-format on
+    IPAddress ip = make_ip6(ipBuffer);
+
+    uint16_t port = 0xFFFF;
+    IPEndpoint endpoint(ip, port);
+
+    ::etl::array<char, MAX_ENDPOINT_STRING_LENGTH> strBuffer;
+    EXPECT_THAT(
+        to_str(endpoint, strBuffer).data(),
+        StrEq("[1112:2122:3132:4142:5152:6162:7172:8182]:65535"));
+
+    ::etl::array<char, 1U> smallBuffer;
+    EXPECT_EQ(0U, to_str(endpoint, smallBuffer).size());
+}
+#endif

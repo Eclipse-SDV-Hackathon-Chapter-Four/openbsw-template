@@ -1,0 +1,40 @@
+/********************************************************************************
+ * Copyright (c) 2024 Accenture
+ *
+ * This program and the accompanying materials are made available under the
+ * terms of the Apache License Version 2.0 which is available at
+ * https://www.apache.org/licenses/LICENSE-2.0
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ ********************************************************************************/
+
+#include <bsp/Uart.h>
+
+#include <cstdint>
+
+#include <errno.h>
+#include <stdio.h>
+#include <unistd.h>
+
+using bsp::Uart;
+
+void terminal_cleanup(void) { Uart::getInstance(Uart::Id::TERMINAL).deinit(); }
+
+extern "C" void putByteToStdout(uint8_t byte)
+{
+    static Uart& uart = Uart::getInstance(Uart::Id::TERMINAL);
+    uart.write(etl::span<uint8_t const>(&byte, 1U));
+}
+
+extern "C" int32_t getByteFromStdin()
+{
+    static Uart& uart = Uart::getInstance(Uart::Id::TERMINAL);
+    uint8_t data_byte = 0;
+    etl::span<uint8_t> data(&data_byte, 1U);
+    size_t const bytes_read = uart.read(data);
+    if (bytes_read == 0)
+    {
+        return -1;
+    }
+    return static_cast<int32_t>(data[0]);
+}
