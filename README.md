@@ -40,7 +40,13 @@ below run inside the container.
 
 ```sh
 cmake --preset posix-freertos
-cmake --build --preset posix-freertos
+cmake --build --preset posix-freertos --parallel
+```
+
+Run the resulting application; press `Ctrl-C` to stop it:
+
+```sh
+build/posix-freertos/executables/referenceApp/application/Release/app.referenceApp.elf
 ```
 
 ### Build and test with Bazel
