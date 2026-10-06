@@ -19,13 +19,23 @@ reference application runs without embedded hardware.
 
 ## Get started
 
-Create a repository from this template, then clone your team repository and enter the vendored
-OpenBSW tree:
+### Preserve the vendored history (recommended)
+
+First create an empty repository for your team. Clone this repository, then point the clone at your
+team repository:
 
 ```sh
-git clone <your-team-repository-url>
-cd <your-team-repository>/vendor/openbsw
+git clone git@github.com:Eclipse-SDV-Hackathon-Chapter-Four/openbsw-template.git <project-name>
+cd <project-name>
+git remote rename origin template
+git remote add origin <your-empty-team-repository-url>
+git push --set-upstream origin main
+cd vendor/openbsw
 ```
+
+GitHub repositories created with **Use this template** start with one new commit, so that route
+copies the current files but not the vendored OpenBSW history. Use it only when your team prefers a
+clean history over history-preserving vendor updates.
 
 Start the development container from that directory:
 
